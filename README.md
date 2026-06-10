@@ -9,3 +9,7 @@ https://variclim.github.io/Meteoradio/Herramienta_Pronostico_v6.html
 
 Ultimo para radio
 https://variclim.github.io/Meteoradio/Meteo_Radio_Con_informe_v5.html
+
+
+Radio v2
+https://variclim.github.io/Meteoradio/Meteo_Radio_Con_informe_v6.html

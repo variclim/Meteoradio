@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Ponderación Jerárquica Multicriterio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 p-4 md:p-8 font-sans">
+  <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-200">
+    
+    <!-- Encabezado -->
+    <div class="border-b pb-4 mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Ponderador Jerárquico Multicriterio</h1>
+        <p class="text-sm text-slate-500 mt-1">Evaluación intra-dimensional, creación de dimensiones dinámicas y ponderación global</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="copiarColumnaPesos()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center gap-1">
+          📋 Copiar Pesos Excel
+        </button>
+        <button onclick="exportarCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center gap-1">
+          📥 Descargar CSV Completo
+        </button>
+      </div>
+    </div>
+
+    <!-- Navegación por Pestañas -->
+    <div class="flex border-b border-slate-200 mb-6 gap-2">
+      <button id="tabBtn1" onclick="cambiarTab('criterios')" class="py-2.5 px-5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-2">
+        <span>1. Criterios por Dimensión</span>
+        <span id="badgeNumDims" class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-mono">2</span>
+      </button>
+      <button id="tabBtn2" onclick="cambiarTab('dimensiones')" class="py-2.5 px-5 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center gap-2">
+        <span>2. Ponderación de Dimensiones & Resumen Global</span>
+      </button>
+    </div>
+
+    <!-- ================= CONTENIDO PESTAÑA 1: CRITERIOS ================= -->
+    <div id="tabContent1" class="space-y-6">
+      <!-- Barra de Configuración de Escala y Agregar Dimensión -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 border border-slate-200 p-4 rounded-xl items-center">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Escala de Evaluación</label>
+          <select id="escalaTipo" onchange="cambiarEscala()" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500">
+            <option value="likert">Escala Likert (1 a 10)</option>
+            <option value="saaty">Escala Jerárquica de Saaty (1 a 9)</option>
+            <option value="puntos">Presupuesto de Puntos (0 a 100)</option>
+          </select>
+        </div>
+        <div class="md:col-span-2 flex justify-start md:justify-end items-end gap-2">
+          <button onclick="modalNuevaDimension()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-lg shadow transition flex items-center gap-1.5">
+            + Crear Nueva Dimensión
+          </button>
+        </div>
+      </div>
+
+      <!-- Ficha de Cambios de Escala -->
+      <div id="panelCambiosEscala" class="p-4 rounded-xl border border-blue-200 bg-blue-50 text-xs text-slate-700 space-y-2"></div>
+
+      <!-- Contenedor dinámico de Dimensiones -->
+      <div id="contenedorDimensiones" class="space-y-8"></div>
+    </div>
+
+    <!-- ================= CONTENIDO PESTAÑA 2: PONDERACIÓN DIMENSIONES ================= -->
+    <div id="tabContent2" class="hidden space-y-8">
+      
+      <!-- Panel de Ponderación Inter-Dimensional -->
+      <section class="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+        <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
+          <div>
+            <h2 class="font-bold text-base">Ponderación entre Dimensiones</h2>
+            <p class="text-xs text-slate-300">Asigna la importancia relativa de cada dimensión para calcular los pesos globales de los criterios.</p>
+          </div>
+          <span class="text-xs font-mono bg-slate-700 px-3 py-1 rounded text-emerald-300 font-bold" id="sumaDimPesosBadge">Suma: 100.00%</span>
+        </div>
+        <div class="overflow-x-auto p-4">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-600 border-b text-xs uppercase">
+              <tr>
+                <th class="p-3">Dimensión ID</th>
+                <th class="p-3">Nombre de la Dimensión</th>
+                <th class="p-3 text-center">N° Criterios</th>
+                <th class="p-3 w-40 text-center">Importancia Relativa</th>
+                <th class="p-3 w-36 text-right">Peso Dimensión (%)</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-ponderacion-dims" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tabla Resumen con Pesos Globales -->
+      <section class="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+        <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
+          <div>
+            <h2 class="font-bold text-base">Jerarquía y Pesos Globales de Criterios ($W_{Global}$)</h2>
+            <p class="text-xs text-slate-300">Peso relativo final integrado en el modelo territorial ($W_{Global} = W_{Intra} \times W_{Dimensión}$)</p>
+          </div>
+          <button onclick="exportarCSV()" class="text-xs bg-slate-700 hover:bg-slate-600 py-1.5 px-3 rounded text-white font-semibold">📥 Exportar Matriz</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-600 border-b text-xs uppercase">
+              <tr>
+                <th class="p-3 w-24">Dimensión</th>
+                <th class="p-3 w-28">Código</th>
+                <th class="p-3">Nombre del Criterio</th>
+                <th class="p-3 text-right">Peso Intra-Dimensión</th>
+                <th class="p-3 text-right font-bold text-blue-900">Peso Global Final</th>
+                <th class="p-3 text-center">Clase Ponderada</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-resumen-global" class="divide-y divide-slate-100 font-mono text-xs"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Toast de Notificaciones -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+      ¡Copiado al portapapeles!
+    </div>
+
+  </div>
+
+  <script>
+    // Configuración de escalas
+    const configuracionesEscalas = {
+      likert: {
+        nombre: 'Escala Likert (1 a 10)',
+        min: 1, max: 10, step: 1, label: '1 a 10',
+        descripcion: 'Asignación directa de relevancia ordinal de 1 (mínimo) a 10 (máximo). Adecuada para evaluaciones participativas.',
+        rangos: [
+          { clase: 'Muy Bajo', color: 'bg-slate-100 text-slate-700 border-slate-300', desc: '1 a 2 pts' },
+          { clase: 'Bajo', color: 'bg-blue-100 text-blue-700 border-blue-300', desc: '3 a 4 pts' },
+          { clase: 'Medio', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', desc: '5 a 6 pts' },
+          { clase: 'Alto', color: 'bg-amber-100 text-amber-700 border-amber-300', desc: '7 a 8 pts' },
+          { clase: 'Muy Alto', color: 'bg-rose-100 text-rose-700 border-rose-300', desc: '9 a 10 pts' }
+        ]
+      },
+      saaty: {
+        nombre: 'Escala Jerárquica de Saaty (1 a 9)',
+        min: 1, max: 9, step: 2, label: '1, 3, 5, 7, 9',
+        descripcion: 'Basada en la escala fundamental AHP (1 = Igual, 3 = Moderada, 5 = Fuerte, 7 = Muy fuerte, 9 = Extrema).',
+        rangos: [
+          { clase: 'Muy Bajo', color: 'bg-slate-100 text-slate-700 border-slate-300', desc: '1 (Mínimo)' },
+          { clase: 'Bajo', color: 'bg-blue-100 text-blue-700 border-blue-300', desc: '3 (Moderado)' },
+          { clase: 'Medio', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', desc: '5 (Fuerte)' },
+          { clase: 'Alto', color: 'bg-amber-100 text-amber-700 border-amber-300', desc: '7 (Muy fuerte)' },
+          { clase: 'Muy Alto', color: 'bg-rose-100 text-rose-700 border-rose-300', desc: '9 (Crítico)' }
+        ]
+      },
+      puntos: {
+        nombre: 'Presupuesto de Puntos (0 a 100)',
+        min: 0, max: 100, step: 5, label: '0 a 100 pts',
+        descripcion: 'Distribución porcentual libre. La clasificación evalúa el peso ponderado intra-dimensión respecto al peso medio teórico.',
+        rangos: [
+          { clase: 'Muy Bajo', color: 'bg-slate-100 text-slate-700 border-slate-300', desc: '< 50% peso promedio' },
+          { clase: 'Bajo', color: 'bg-blue-100 text-blue-700 border-blue-300', desc: '50% a 80% promedio' },
+          { clase: 'Medio', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', desc: '80% a 120% promedio' },
+          { clase: 'Alto', color: 'bg-amber-100 text-amber-700 border-amber-300', desc: '120% a 160% promedio' },
+          { clase: 'Muy Alto', color: 'bg-rose-100 text-rose-700 border-rose-300', desc: '> 160% peso promedio' }
+        ]
+      }
+    };
+
+    // Estructura de Dimensiones
+    let dimensiones = [
+      { id: 'D1', nombre: 'Biofísica / Hidrológica', pesoImportancia: 10 },
+      { id: 'D2', nombre: 'Socioambiental / Gestión', pesoImportancia: 10 }
+    ];
+
+    // Criterios base
+    let criterios = [
+      { dim: 'D1', cod: 'D1_AWY', nombre: 'Rendimiento hídrico anual', val: 5 },
+      { dim: 'D1', cod: 'D1_L', nombre: 'Recarga local potencial', val: 5 },
+      { dim: 'D1', cod: 'D1_QF', nombre: 'Escurrimiento rápido', val: 5 },
+      { dim: 'D1', cod: 'D1_N', nombre: 'Transporte de nitrógeno', val: 5 },
+      { dim: 'D1', cod: 'D1_P', nombre: 'Transporte de fósforo', val: 5 },
+      { dim: 'D1', cod: 'D1_EXT', nombre: 'Presión por extracción hídrica total', val: 4 },
+      { dim: 'D1', cod: 'D1_ACU', nombre: 'Acumulación de flujo y aporte potencial a cauces', val: 4 },
+      { dim: 'D1', cod: 'D1_SEQ', nombre: 'Peligro por sequías', val: 2 },
+      { dim: 'D1', cod: 'D1_INU', nombre: 'Peligro por inundaciones', val: 6 },
+      { dim: 'D1', cod: 'D1_USV', nombre: 'Conflictos de uso del suelo', val: 9 },
+      { dim: 'D1', cod: 'D1_SED', nombre: 'Erosión hídrica potencial', val: 8 },
+      { dim: 'D1', cod: 'D1_NDVI', nombre: 'Densidad/vigor de vegetación actual', val: 8 },
+
+      { dim: 'D2', cod: 'D2_INS', nombre: 'Instrumentos de política territorial ambiental aplicables', val: 9 },
+      { dim: 'D2', cod: 'D2_RED', nombre: 'Accesibilidad física a sitios mediante red de caminos', val: 7 },
+      { dim: 'D2', cod: 'D2_POB', nombre: 'Densidad poblacional', val: 5 },
+      { dim: 'D2', cod: 'D2_IM', nombre: 'Índice de marginación', val: 3 },
+      { dim: 'D2', cod: 'D2_NUC', nombre: 'Núcleos agrarios / propiedad social', val: 3 },
+      { dim: 'D2', cod: 'D2_CONT', nombre: 'Peligros por contaminación de agua', val: 7 },
+      { dim: 'D2', cod: 'D2_HUM', nombre: 'Presencia de humedales', val: 2 },
+      { dim: 'D2', cod: 'D2_MAN', nombre: 'Presencia de manantiales', val: 2 }
+    ];
+
+    function cambiarTab(tab) {
+      const t1 = document.getElementById('tabContent1');
+      const t2 = document.getElementById('tabContent2');
+      const b1 = document.getElementById('tabBtn1');
+      const b2 = document.getElementById('tabBtn2');
+
+      if (tab === 'criterios') {
+        t1.classList.remove('hidden');
+        t2.classList.add('hidden');
+        b1.className = "py-2.5 px-5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-2";
+        b2.className = "py-2.5 px-5 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center gap-2";
+      } else {
+        t1.classList.add('hidden');
+        t2.classList.remove('hidden');
+        b2.className = "py-2.5 px-5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-2";
+        b1.className = "py-2.5 px-5 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center gap-2";
+        renderizarPestañaDimensiones();
+      }
+    }
+
+    function evaluarClase(criterio, pesoNormalizado, numCriteriosDim) {
+      const escala = document.getElementById('escalaTipo').value;
+      const v = parseFloat(criterio.val) || 0;
+      const cfg = configuracionesEscalas[escala];
+
+      if (escala === 'likert' || escala === 'saaty') {
+        if (v <= 2) return cfg.rangos[0];
+        if (v <= 4) return cfg.rangos[1];
+        if (v <= 6) return cfg.rangos[2];
+        if (v <= 8) return cfg.rangos[3];
+        return cfg.rangos[4];
+      }
+
+      if (escala === 'puntos') {
+        const pesoMedio = 1 / (numCriteriosDim || 1);
+        const ratio = pesoNormalizado / pesoMedio;
+        if (ratio < 0.5) return cfg.rangos[0];
+        if (ratio < 0.8) return cfg.rangos[1];
+        if (ratio < 1.2) return cfg.rangos[2];
+        if (ratio < 1.6) return cfg.rangos[3];
+        return cfg.rangos[4];
+      }
+    }
+
+    function renderizarPestañaCriterios() {
+      const escalaKey = document.getElementById('escalaTipo').value;
+      const cfg = configuracionesEscalas[escalaKey];
+      const contenedor = document.getElementById('contenedorDimensiones');
+      contenedor.innerHTML = '';
+
+      document.getElementById('badgeNumDims').textContent = dimensiones.length;
+
+      dimensiones.forEach((dim) => {
+        const items = criterios.filter(c => c.dim === dim.id);
+        const totalImportancia = items.reduce((acc, c) => acc + (parseFloat(c.val) || 0), 0);
+
+        const sec = document.createElement('section');
+        sec.className = "border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white";
+        sec.innerHTML = `
+          <div class="bg-slate-800 text-white px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-3">
+              <span class="font-mono bg-blue-600 px-2.5 py-1 rounded text-xs font-bold">${dim.id}</span>
+              <input type="text" value="${dim.nombre}" onchange="renombrarDimension('${dim.id}', this.value)" 
+                class="bg-transparent border-b border-transparent hover:border-slate-400 focus:border-white focus:bg-slate-700 px-1 py-0.5 rounded font-bold text-sm text-white focus:outline-none">
+              <span class="text-xs text-slate-300 font-mono">| Suma: <strong class="${totalImportancia > 0 ? 'text-emerald-400' : 'text-rose-400'}">${totalImportancia > 0 ? '100.00% (OK)' : '0.00% (Vacío)'}</strong></span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="agregarCriterio('${dim.id}')" class="text-xs bg-slate-700 hover:bg-slate-600 py-1.5 px-3 rounded transition font-semibold">+ Criterio</button>
+              <button onclick="eliminarDimension('${dim.id}')" class="text-xs bg-rose-900/60 hover:bg-rose-700 text-rose-200 py-1.5 px-3 rounded transition font-semibold">Eliminar Dimensión</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-50 text-slate-600 border-b text-xs uppercase">
+                <tr>
+                  <th class="p-3 w-28">Código</th>
+                  <th class="p-3">Nombre del Criterio</th>
+                  <th class="p-3 w-36 text-center">Valor (${cfg.label})</th>
+                  <th class="p-3 w-32 text-right">Peso Intra-Dim</th>
+                  <th class="p-3 w-36 text-center">Clase Ponderada</th>
+                  <th class="p-3 w-14 text-center">Borrar</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-${dim.id}" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        `;
+        contenedor.appendChild(sec);
+
+        const tbody = document.getElementById(`tbody-${dim.id}`);
+        items.forEach(c => {
+          const globalIdx = criterios.indexOf(c);
+          const peso = totalImportancia > 0 ? ((parseFloat(c.val) || 0) / totalImportancia) : 0;
+          const claseInfo = evaluarClase(c, peso, items.length);
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-50 transition";
+          tr.innerHTML = `
+            <td class="p-3">
+              <input type="text" value="${c.cod}" onchange="criterios[${globalIdx}].cod = this.value" class="w-24 border rounded px-2 py-1 text-xs font-mono">
+            </td>
+            <td class="p-3">
+              <input type="text" value="${c.nombre}" onchange="criterios[${globalIdx}].nombre = this.value" class="w-full border rounded px-2 py-1 text-xs">
+            </td>
+            <td class="p-3 text-center">
+              <input type="number" min="${cfg.min}" max="${cfg.max}" step="${cfg.step}" value="${c.val}" 
+                oninput="criterios[${globalIdx}].val = this.value; renderizarPestañaCriterios()" 
+                class="w-24 border border-blue-400 bg-blue-50 font-bold text-center rounded px-2 py-1 text-xs text-blue-900 focus:bg-white">
+            </td>
+            <td class="p-3 text-right font-mono font-semibold text-slate-700">
+              ${(peso * 100).toFixed(2)}% <span class="text-[10px] text-slate-400 block">${peso.toFixed(4)}</span>
+            </td>
+            <td class="p-3 text-center">
+              <span class="inline-block px-2.5 py-1 text-[11px] font-semibold rounded-full border ${claseInfo.color}">
+                ${claseInfo.clase}
+              </span>
+            </td>
+            <td class="p-3 text-center">
+              <button onclick="eliminarCriterio(${globalIdx})" class="text-rose-500 hover:text-rose-700 font-bold text-base">&times;</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      });
+
+      renderizarPanelCambios(cfg);
+    }
+
+    function renderizarPestañaDimensiones() {
+      const tbodyDims = document.getElementById('tbody-ponderacion-dims');
+      tbodyDims.innerHTML = '';
+      const totalImportanciaDims = dimensiones.reduce((acc, d) => acc + (parseFloat(d.pesoImportancia) || 0), 0);
+
+      dimensiones.forEach((dim, idx) => {
+        const numCriterios = criterios.filter(c => c.dim === dim.id).length;
+        const pesoDim = totalImportanciaDims > 0 ? ((parseFloat(dim.pesoImportancia) || 0) / totalImportanciaDims) : 0;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3 font-mono font-bold text-blue-800">${dim.id}</td>
+          <td class="p-3 font-semibold text-slate-700">${dim.nombre}</td>
+          <td class="p-3 text-center font-mono">${numCriterios}</td>
+          <td class="p-3 text-center">
+            <input type="number" min="1" max="100" value="${dim.pesoImportancia}" 
+              oninput="dimensiones[${idx}].pesoImportancia = this.value; renderizarPestañaDimensiones()" 
+              class="w-24 border border-indigo-400 bg-indigo-50 font-bold text-center rounded px-2 py-1 text-xs text-indigo-900">
+          </td>
+          <td class="p-3 text-right font-mono font-bold text-slate-900">
+            ${(pesoDim * 100).toFixed(2)}%
+          </td>
+        `;
+        tbodyDims.appendChild(tr);
+      });
+
+      document.getElementById('sumaDimPesosBadge').textContent = `Suma: 100.00% (Total: ${totalImportanciaDims})`;
+
+      // Renderizar matriz resumen global
+      const tbodyGlobal = document.getElementById('tbody-resumen-global');
+      tbodyGlobal.innerHTML = '';
+
+      dimensiones.forEach(dim => {
+        const items = criterios.filter(c => c.dim === dim.id);
+        const totalIntra = items.reduce((acc, c) => acc + (parseFloat(c.val) || 0), 0);
+        const pesoDim = totalImportanciaDims > 0 ? ((parseFloat(dim.pesoImportancia) || 0) / totalImportanciaDims) : 0;
+
+        items.forEach(c => {
+          const pesoIntra = totalIntra > 0 ? ((parseFloat(c.val) || 0) / totalIntra) : 0;
+          const pesoGlobal = pesoIntra * pesoDim;
+          const claseInfo = evaluarClase(c, pesoIntra, items.length);
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="p-3 text-slate-500 font-bold">${dim.id}</td>
+            <td class="p-3 text-blue-700 font-bold">${c.cod}</td>
+            <td class="p-3 font-sans text-slate-800">${c.nombre}</td>
+            <td class="p-3 text-right font-semibold">${(pesoIntra * 100).toFixed(2)}%</td>
+            <td class="p-3 text-right font-bold text-blue-900">${(pesoGlobal * 100).toFixed(3)}% <span class="text-[10px] text-slate-400 font-normal">(${pesoGlobal.toFixed(5)})</span></td>
+            <td class="p-3 text-center">
+              <span class="inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full border ${claseInfo.color}">
+                ${claseInfo.clase}
+              </span>
+            </td>
+          `;
+          tbodyGlobal.appendChild(tr);
+        });
+      });
+    }
+
+    function renderizarPanelCambios(cfg) {
+      const panel = document.getElementById('panelCambiosEscala');
+      panel.innerHTML = `
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-2 border-b border-blue-200 pb-2">
+          <div>
+            <strong class="text-blue-900 text-sm font-bold">Configuración Activa: ${cfg.nombre}</strong>
+            <p class="text-slate-600 mt-0.5">${cfg.descripcion}</p>
+          </div>
+          <span class="bg-blue-100 text-blue-800 font-mono px-2 py-1 rounded text-[11px] self-start md:self-auto">
+            Rango: [${cfg.min} - ${cfg.max}] | Paso: ${cfg.step}
+          </span>
+        </div>
+        <div>
+          <span class="font-bold text-slate-700 block mb-1">Criterio de segmentación en 5 clases para esta escala:</span>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mt-1">
+            ${cfg.rangos.map(r => `
+              <div class="p-2 rounded border ${r.color} text-center">
+                <div class="font-bold text-xs">${r.clase}</div>
+                <div class="text-[10px] mt-0.5 opacity-90">${r.desc}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function modalNuevaDimension() {
+      const nuevoIdNum = dimensiones.length + 1;
+      const nuevoId = prompt(`Ingrese el identificador para la nueva dimensión (Ejemplo: D${nuevoIdNum}):`, `D${nuevoIdNum}`);
+      if (!nuevoId) return;
+
+      if (dimensiones.some(d => d.id.toUpperCase() === nuevoId.trim().toUpperCase())) {
+        alert('Ya existe una dimensión con ese ID.');
+        return;
+      }
+
+      const nuevoNombre = prompt(`Nombre descriptivo para ${nuevoId}:`, `Nueva Dimensión ${nuevoIdNum}`) || `Dimensión ${nuevoId}`;
+      dimensiones.push({
+        id: nuevoId.trim().toUpperCase(),
+        nombre: nuevoNombre,
+        pesoImportancia: 10
+      });
+
+      // Agregar un criterio por defecto
+      criterios.push({
+        dim: nuevoId.trim().toUpperCase(),
+        cod: `${nuevoId.trim().toUpperCase()}_CRIT1`,
+        nombre: 'Criterio inicial',
+        val: 5
+      });
+
+      renderizarPestañaCriterios();
+      mostrarToast(`Dimensión ${nuevoId} creada exitosamente.`);
+    }
+
+    function renombrarDimension(id, nuevoNombre) {
+      const d = dimensiones.find(dim => dim.id === id);
+      if (d) d.nombre = nuevoNombre;
+    }
+
+    function eliminarDimension(id) {
+      if (dimensiones.length <= 1) {
+        alert('Debe existir al menos una dimensión.');
+        return;
+      }
+      if (confirm(`¿Desea eliminar la dimensión ${id} y todos sus criterios asociados?`)) {
+        dimensiones = dimensiones.filter(d => d.id !== id);
+        criterios = criterios.filter(c => c.dim !== id);
+        renderizarPestañaCriterios();
+      }
+    }
+
+    function agregarCriterio(dim) {
+      const cfg = configuracionesEscalas[document.getElementById('escalaTipo').value];
+      const count = criterios.filter(c => c.dim === dim).length + 1;
+      criterios.push({
+        dim: dim,
+        cod: `${dim}_C${count}`,
+        nombre: 'Nuevo criterio',
+        val: cfg.min === 0 ? 5 : cfg.min
+      });
+      renderizarPestañaCriterios();
+    }
+
+    function eliminarCriterio(idx) {
+      criterios.splice(idx, 1);
+      renderizarPestañaCriterios();
+    }
+
+    function cambiarEscala() {
+      renderizarPestañaCriterios();
+    }
+
+    function copiarColumnaPesos() {
+      let texto = '';
+      dimensiones.forEach(dim => {
+        const items = criterios.filter(c => c.dim === dim.id);
+        const total = items.reduce((acc, c) => acc + (parseFloat(c.val) || 0), 0);
+        items.forEach(c => {
+          const peso = total > 0 ? (parseFloat(c.val) || 0) / total : 0;
+          texto += peso.toFixed(4) + '\n';
+        });
+      });
+
+      navigator.clipboard.writeText(texto).then(() => {
+        mostrarToast('¡Pesos intra-dimensión copiados en orden para Excel!');
+      });
+    }
+
+    function exportarCSV() {
+      const totalImportanciaDims = dimensiones.reduce((acc, d) => acc + (parseFloat(d.pesoImportancia) || 0), 0);
+      let csv = 'Dimension_ID,Nombre_Dimension,Peso_Dimension,Codigo_Criterio,Nombre_Criterio,Valor_Ingresado,Peso_Intra_Dim,Peso_Global,Clase_Ponderada\n';
+
+      dimensiones.forEach(dim => {
+        const items = criterios.filter(c => c.dim === dim.id);
+        const totalIntra = items.reduce((acc, c) => acc + (parseFloat(c.val) || 0), 0);
+        const pesoDim = totalImportanciaDims > 0 ? ((parseFloat(dim.pesoImportancia) || 0) / totalImportanciaDims) : 0;
+
+        items.forEach(c => {
+          const pesoIntra = totalIntra > 0 ? (parseFloat(c.val) || 0) / totalIntra : 0;
+          const pesoGlobal = pesoIntra * pesoDim;
+          const clase = evaluarClase(c, pesoIntra, items.length).clase;
+          csv += `"${dim.id}","${dim.nombre}",${pesoDim.toFixed(4)},"${c.cod}","${c.nombre}",${c.val},${pesoIntra.toFixed(6)},${pesoGlobal.toFixed(6)},"${clase}"\n`;
+        });
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Ponderacion_Jerarquica_Global.csv';
+      a.click();
+    }
+
+    function mostrarToast(mensaje) {
+      const toast = document.getElementById('toast');
+      toast.textContent = mensaje;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 3000);
+    }
+
+    // Inicializar
+    renderizarPestañaCriterios();
+  </script>
+</body>
+</html>

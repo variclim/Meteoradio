@@ -17,3 +17,6 @@ https://variclim.github.io/Meteoradio/Meteo_Radio_Con_informe_v6.html
 
 Agroclima_v1
 https://variclim.github.io/Meteoradio/Herramienta_Agroclima_v1.html
+
+ETJ_Ponderaciones
+https://variclim.github.io/Meteoradio/Pond_v3_ETJ.html

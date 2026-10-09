@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Integral de Inventario GEI y Balance Energético — San Luis Potosí</title>
+  
+  <!-- CDN Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- CDN Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- CDN Plotly.js -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff', 100: '#e0effe', 500: '#0284c7', 600: '#0369a1',
+              700: '#1d4ed8', 800: '#1e40af', 900: '#0f172a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    .font-mono-num { font-family: 'JetBrains Mono', monospace; }
+    .custom-scrollbar::-webkit-scrollbar { height: 7px; width: 7px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .chart-box-base { position: relative; height: 320px; width: 100%; }
+    .sankey-box-base { position: relative; height: 560px; width: 100%; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
+
+  <!-- Header Superior -->
+  <header class="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="flex items-center space-x-3.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-emerald-500 flex items-center justify-center font-bold text-white shadow-inner flex-shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">
+              Sistema Integral de Inventario GEI & Balance Energético — San Luis Potosí
+            </h1>
+            <span class="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              IPCC AR5 • PEACC
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Plataforma Dinámica Estatal y Municipal (58 Municipios • 2015–2025)
+          </p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <button onclick="exportarActivoCSV()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition shadow-sm hover:text-white">
+          <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Exportar CSV
+        </button>
+        <button onclick="window.print()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-semibold text-white transition shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Imprimir / PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Pestañas de Navegación -->
+    <div class="border-t border-slate-800 bg-slate-900/90 backdrop-blur">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto custom-scrollbar space-x-1 py-1.5 text-xs font-medium">
+        <button onclick="cambiarModulo('matriz')" id="nav-matriz" class="nav-tab-btn px-3 py-2 rounded-lg text-white bg-sky-600 font-semibold shadow-sm flex items-center gap-1.5 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          1. Matriz GEI Estatal & Municipal
+        </button>
+        <button onclick="cambiarModulo('sankey')" id="nav-sankey" class="nav-tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          2. Diagramas de Sankey (Energía & GEI)
+        </button>
+        <button onclick="cambiarModulo('agricultura')" id="nav-agricultura" class="nav-tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          3. Agricultura & Quema en Campo
+        </button>
+        <button onclick="cambiarModulo('ganaderia')" id="nav-ganaderia" class="nav-tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          4. Ganadería & Excretas (Multiespecie)
+        </button>
+        <button onclick="cambiarModulo('transporte')" id="nav-transporte" class="nav-tab-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          5. Corredor Carretero & Fuentes
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Barra de Filtro Global -->
+  <section class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-center">
+        
+        <!-- Selector Territorial -->
+        <div class="md:col-span-5">
+          <label for="sel-territorio" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            Seleccionar Territorio:
+          </label>
+          <select id="sel-territorio" onchange="renderizarTodo()" class="w-full text-sm font-semibold bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:ring-2 focus:ring-sky-500">
+            <option value="ESTATAL" selected>★ Todo el Estado de San Luis Potosí (Consolidado)</option>
+            <option value="TODOS_MUNICIPIOS">📊 Comparativa: Todos los 58 Municipios</option>
+            <optgroup label="Municipios de San Luis Potosí (58)" id="optgroup-municipios"></optgroup>
+          </select>
+        </div>
+
+        <!-- Modo Temporal -->
+        <div class="md:col-span-3">
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Temporalidad:</label>
+          <div class="inline-flex rounded-lg border border-slate-300 bg-slate-100 p-0.5 w-full text-xs font-medium">
+            <button id="btn-modo-anual" onclick="setModoTemporal('anual')" class="flex-1 py-1.5 rounded-md text-sky-700 font-semibold transition bg-white shadow-sm">Año Específico</button>
+            <button id="btn-modo-acum" onclick="setModoTemporal('acumulado')" class="flex-1 py-1.5 rounded-md text-slate-600 font-medium transition hover:text-slate-900">Acumulado</button>
+          </div>
+        </div>
+
+        <!-- Años -->
+        <div class="md:col-span-4" id="contenedor-anios">
+          <div id="wrapper-anual">
+            <label for="sel-anio" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Año de Análisis:</label>
+            <select id="sel-anio" onchange="renderizarTodo()" class="w-full text-sm font-semibold bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:ring-2 focus:ring-sky-500">
+              <option value="2015">2015</option>
+              <option value="2016">2016</option>
+              <option value="2017">2017</option>
+              <option value="2018">2018</option>
+              <option value="2019">2019</option>
+              <option value="2020">2020 (Año COVID)</option>
+              <option value="2021">2021</option>
+              <option value="2022">2022</option>
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025" selected>2025 (Horizonte Actual)</option>
+            </select>
+          </div>
+          <div id="wrapper-acum" class="hidden grid grid-cols-2 gap-2">
+            <div>
+              <label for="sel-desde" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Desde:</label>
+              <select id="sel-desde" onchange="validarRango()" class="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-800">
+                <option value="2015" selected>2015</option>
+                <option value="2016">2016</option>
+                <option value="2017">2017</option>
+                <option value="2018">2018</option>
+                <option value="2019">2019</option>
+                <option value="2020">2020</option>
+              </select>
+            </div>
+            <div>
+              <label for="sel-hasta" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Hasta:</label>
+              <select id="sel-hasta" onchange="validarRango()" class="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-800">
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025" selected>2025</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Tarjetas KPI -->
+  <section class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-3.5">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm relative overflow-hidden">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Emisiones Totales (CO₂e)</p>
+        <p class="text-2xl font-black text-slate-900 mt-1 font-mono-num" id="kpi-co2eq">0.0000</p>
+        <p class="text-[11px] text-slate-500 font-medium mt-0.5" id="kpi-co2eq-sub">Millones de Toneladas (Mt CO₂e)</p>
+      </div>
+
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm relative overflow-hidden">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Masa Bruta Físic. GEI</p>
+        <p class="text-2xl font-black text-slate-900 mt-1 font-mono-num" id="kpi-masa">0.0000</p>
+        <p class="text-[11px] text-slate-500 font-medium mt-0.5">Mt físicas (CO₂ + CH₄ + N₂O)</p>
+      </div>
+
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm relative overflow-hidden">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Sector Preponderante</p>
+        <p class="text-base font-bold text-slate-900 mt-1 truncate" id="kpi-sector-top">1. ENERGÍA</p>
+        <p class="text-[11px] text-emerald-700 font-semibold mt-0.5" id="kpi-sector-pct">0.0% del total</p>
+      </div>
+
+      <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm relative overflow-hidden">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Consumo Energético</p>
+        <p class="text-2xl font-black text-slate-900 mt-1 font-mono-num" id="kpi-energia-pj">1,849.3</p>
+        <p class="text-[11px] text-slate-500 font-medium mt-0.5" id="kpi-detalle-sub">Petajoules (PJ) asignados</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MÓDULO 1: MATRIZ GEI Y PANEL GRÁFICO COMPLETO -->
+  <section id="modulo-matriz" class="modulo-contenido max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 mb-10">
+    <div class="space-y-4">
+      
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-4 sm:px-6 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-600"></span>
+            <span class="text-sm font-bold text-slate-800">Panel Gráfico Integral de Emisiones</span>
+            <span class="text-xs text-slate-500 font-normal hidden sm:inline" id="txt-subtitulo-panel">| Visualización multivariable interactiva</span>
+          </div>
+
+          <div class="flex flex-wrap gap-1 bg-slate-200/70 p-1 rounded-lg text-xs font-semibold">
+            <button onclick="cambiarTabGrafica('sectores')" id="tab-btn-sectores" class="px-2.5 py-1 rounded-md bg-white text-sky-700 shadow-sm transition">1. Sectores y %</button>
+            <button onclick="cambiarTabGrafica('subsectores')" id="tab-btn-subsectores" class="px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">2. Subsectores (CO₂e)</button>
+            <button onclick="cambiarTabGrafica('gases')" id="tab-btn-gases" class="px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">3. Masa vs CO₂eq</button>
+            <button onclick="cambiarTabGrafica('territorial')" id="tab-btn-territorial" class="px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">4. Top Municipios</button>
+            <button onclick="cambiarTabGrafica('temporal')" id="tab-btn-temporal" class="px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">5. Serie Temporal 2015-2025</button>
+          </div>
+        </div>
+
+        <div class="p-5">
+          <div id="view-chart-sectores" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div class="lg:col-span-5 chart-box-base"><canvas id="chartSectoresPie"></canvas></div>
+            <div class="lg:col-span-7 chart-box-base"><canvas id="chartSectoresBar"></canvas></div>
+          </div>
+          <div id="view-chart-subsectores" class="hidden">
+            <div class="chart-box-base" style="height: 380px;"><canvas id="chartSubsectores"></canvas></div>
+          </div>
+          <div id="view-chart-gases" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              <div class="lg:col-span-6 chart-box-base"><canvas id="chartGasesMasa"></canvas></div>
+              <div class="lg:col-span-6 chart-box-base"><canvas id="chartGasesEq"></canvas></div>
+            </div>
+          </div>
+          <div id="view-chart-territorial" class="hidden">
+            <div class="chart-box-base" style="height: 360px;"><canvas id="chartTerritorial"></canvas></div>
+          </div>
+          <div id="view-chart-temporal" class="hidden">
+            <div class="chart-box-base" style="height: 350px;"><canvas id="chartTemporal"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla Oficial Matriz GEI -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-4 sm:px-6 py-3.5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              Matriz Oficial de Emisiones GEI por Sector y Subsector
+              <span class="text-xs font-normal text-slate-500" id="tabla-contexto-subtext">Cargando...</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Valores en Millones de Toneladas (Mt = 10⁶ t) y equivalencias AR5</p>
+          </div>
+          <input type="text" id="filtro-subsector" oninput="filtrarFilasTabla()" placeholder="Buscar subsector..." class="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-sky-500 focus:outline-none w-44">
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs border-collapse" id="main-table">
+            <thead>
+              <tr class="bg-slate-100/90 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3.5 sticky left-0 bg-slate-100 z-10">SECTOR</th>
+                <th class="py-3 px-3.5">SUBSECTOR</th>
+                <th class="py-3 px-3 text-right">CO₂</th>
+                <th class="py-3 px-3 text-right">CH₄</th>
+                <th class="py-3 px-3 text-right">CO₂eq (CH₄)</th>
+                <th class="py-3 px-3 text-right">N₂O</th>
+                <th class="py-3 px-3 text-right">CO₂eq (N₂O)</th>
+                <th class="py-3 px-3 text-right bg-slate-100/50">MILLONES DE TONELADAS GEI</th>
+                <th class="py-3 px-3.5 text-right bg-sky-50/70 text-sky-900 font-extrabold">MILLONES DE TONELADAS EXPRESADAS COMO CO₂ EQ</th>
+                <th class="py-3 px-3.5 text-right font-extrabold text-slate-800">PORCENTAJE %</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-cuerpo" class="divide-y divide-slate-100 text-slate-700 font-mono-num"></tbody>
+            <tfoot id="tabla-pie" class="border-t-2 border-slate-300 bg-slate-100 text-slate-900 font-mono-num font-bold text-xs"></tfoot>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- MÓDULO 2: DIAGRAMAS DE SANKEY (ENERGÍA & GEI REACTIVO MUNICIPAL) -->
+  <section id="modulo-sankey" class="modulo-contenido hidden max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 mb-10">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      
+      <div class="bg-slate-50 px-4 sm:px-6 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Diagrama de Sankey — Flujos del Balance Energético & Emisiones GEI
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5" id="sankey-subtext">Visualización reactiva municipal</p>
+        </div>
+
+        <div class="inline-flex rounded-lg border border-slate-300 bg-slate-200 p-0.5 text-xs font-medium">
+          <button id="btn-sankey-energia" onclick="conmutarSankey('energia')" class="px-3 py-1.5 rounded-md bg-white text-sky-700 font-semibold shadow-sm transition">
+            1. Balance Energético (PJ)
+          </button>
+          <button id="btn-sankey-gei" onclick="conmutarSankey('gei')" class="px-3 py-1.5 rounded-md text-slate-600 font-medium hover:text-slate-900 transition">
+            2. Flujo de Emisiones GEI (Mt CO₂e)
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4 sm:p-6 bg-slate-900 rounded-b-xl relative">
+        <div id="plotly-sankey-container" class="sankey-box-base"></div>
+
+        <div id="sankey-legend-box" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-slate-300">
+          <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+            <span class="font-bold text-emerald-400 block mb-1">PRODUCCIÓN LOCAL</span>
+            Bagazo cañero (ingenios Huasteca) y leña rural local.
+          </div>
+          <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+            <span class="font-bold text-sky-400 block mb-1">ENTRADAS FORÁNEAS</span>
+            Gas Seco, Gas LP, Gasolinas, Combustóleo y Diésel.
+          </div>
+          <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+            <span class="font-bold text-amber-400 block mb-1">TRANSFORMACIÓN</span>
+            Plantas fraccionadoras y centrales térmicas (Villa de Reyes/Tamuín).
+          </div>
+          <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+            <span class="font-bold text-rose-400 block mb-1">CONSUMO FINAL</span>
+            Transporte, Industria, Comercial/Residencial y Agropecuario.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- MÓDULO 3: AGRICULTURA & QUEMA EN CAMPO (ZONIFICACIÓN REAL) -->
+  <section id="modulo-agricultura" class="modulo-contenido hidden max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 mb-10">
+    <div class="space-y-4">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              Sector Agropecuario: Cultivos, Residuos y Quema Agrícola en Campo
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Metodología IPCC 2006 (Agricultura, Ganaderia y Cambios de uso de suelo AFOLU Cap. 2 y 5) • Zonificación Potosina SIAP / SAGARPA</p>
+          </div>
+          <div class="text-xs bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-lg font-medium" id="badge-agricola">
+            🔥 <strong>Cuenca Cañera:</strong> Restringida exclusivamente a la Huasteca Potosina.
+          </div>
+        </div>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Cuantificación con factores INECC oficiales: Fracción de biomasa seca, porcentaje incinerado y factores de combustión (0.90).
+        </p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-4 sm:px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+          <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Parámetros de Producción e Incineración por Cultivo</h3>
+          <span class="text-xs font-semibold text-amber-700" id="subtexto-alcance-cultivos">Alcance Estatal</span>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100/80 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3.5">Cultivo</th>
+                <th class="py-3 px-3 text-right">Producción Municipal (Ton)</th>
+                <th class="py-3 px-3 text-right">Relación Residuo/Cultivo</th>
+                <th class="py-3 px-3 text-right">Materia Seca</th>
+                <th class="py-3 px-3 text-right">% Incinerada</th>
+                <th class="py-3 px-3 text-right">Factor Oxidación</th>
+                <th class="py-3 px-3 text-right bg-amber-50/60 font-extrabold text-amber-900">Residuo Incinerado (Ton)</th>
+                <th class="py-3 px-3 text-right">CO₂ (Mt)</th>
+                <th class="py-3 px-3 text-right">CH₄ (Mt)</th>
+                <th class="py-3 px-3 text-right bg-sky-50 font-extrabold text-sky-900">CO₂eq Total (Mt)</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-cultivos-cuerpo" class="divide-y divide-slate-100 font-mono-num text-slate-700"></tbody>
+            <tfoot id="tabla-cultivos-pie" class="bg-slate-100 font-mono-num font-bold border-t-2 border-slate-300"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="lg:col-span-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm chart-box-base">
+          <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Producción por Cultivo (Ton)</h3>
+          <canvas id="chartCultivosProduccion"></canvas>
+        </div>
+        <div class="lg:col-span-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm chart-box-base">
+          <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Emisiones por Quema Agrícola (Mt CO₂e)</h3>
+          <canvas id="chartCultivosEmisiones"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MÓDULO 4: GANADERÍA & EXCRETAS (MULTIESPECIE ZONIFICADO) -->
+  <section id="modulo-ganaderia" class="modulo-contenido hidden max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 mb-10">
+    <div class="space-y-4">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              Sector Pecuario: Inventario Ganadero, Fermentación Entérica y Manejo de Excretas
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Padrón Pecuario SIAP/SAGARPA • Factores de emisión Tier 1/2 específicos para SLP</p>
+          </div>
+          <div class="text-xs bg-rose-50 border border-rose-200 text-rose-800 px-3 py-1.5 rounded-lg font-medium" id="badge-pecuario">
+            🐄 <strong>Poblaciones Reales:</strong> Bovinos carne en Tamuín/Ébano; leche en Villa de Reyes; caprinos en Altiplano.
+          </div>
+        </div>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Estimación por cabezas municipales reales de metano entérico, metano por excretas y óxido nitroso directo/indirecto.
+        </p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-4 sm:px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+          <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Inventario Pecuario y Emisiones de CH₄ y N₂O</h3>
+          <span class="text-xs font-semibold text-rose-700" id="subtexto-alcance-ganado">Alcance Estatal</span>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100/80 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3.5">Especie Animal</th>
+                <th class="py-3 px-3 text-right">Cabezas en Territorio</th>
+                <th class="py-3 px-3 text-right">FE Entérico (kg/año)</th>
+                <th class="py-3 px-3 text-right">CH₄ Entérico (Ton)</th>
+                <th class="py-3 px-3 text-right">FE Excretas (kg/año)</th>
+                <th class="py-3 px-3 text-right">CH₄ Excretas (Ton)</th>
+                <th class="py-3 px-3 text-right">Excreción N</th>
+                <th class="py-3 px-3 text-right">N₂O Total (Ton)</th>
+                <th class="py-3 px-3 text-right bg-rose-50/70 font-extrabold text-rose-900">Emisión (Mt CO₂e)</th>
+                <th class="py-3 px-3 text-right font-extrabold text-slate-800">% Especie</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-ganado-cuerpo" class="divide-y divide-slate-100 font-mono-num text-slate-700"></tbody>
+            <tfoot id="tabla-ganado-pie" class="bg-slate-100 font-mono-num font-bold border-t-2 border-slate-300"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="lg:col-span-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm chart-box-base">
+          <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Población Ganadera por Especie (Cabezas)</h3>
+          <canvas id="chartGanadoPoblacion"></canvas>
+        </div>
+        <div class="lg:col-span-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm chart-box-base">
+          <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Emisiones GEI por Especie (Mt CO₂e)</h3>
+          <canvas id="chartGanadoEmisiones"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MÓDULO 5: CORREDOR CARRETERO Y FUENTES -->
+  <section id="modulo-transporte" class="modulo-contenido hidden max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 mb-10">
+    <div class="space-y-4">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+              Corredor Carretero México–Nuevo Laredo en SLP & Clasificación de Fuentes
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Estudios SCT (IMT) • Inventario de Fuentes Fijas, de Área y Móviles (SEGAM)</p>
+          </div>
+          <div class="text-xs bg-indigo-50 border border-indigo-200 text-indigo-800 px-3 py-1.5 rounded-lg font-medium" id="badge-carretero">
+            🚛 <strong>Corredor 57:</strong> 10.1 t/km-día promedio en el eje central logístico del estado.
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-4 sm:px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+          <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Tramos del Corredor Carretero 57 / 57D</h3>
+          <span class="text-[11px] text-slate-500 font-semibold" id="subtexto-km-carretera">Longitud en territorio: 361.23 km</span>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100/80 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3.5">Tramo Carretero</th>
+                <th class="py-3 px-3">Ruta</th>
+                <th class="py-3 px-3 text-right">Longitud en Municipio (km)</th>
+                <th class="py-3 px-3 text-right">HC (t/día)</th>
+                <th class="py-3 px-3 text-right">CO (t/día)</th>
+                <th class="py-3 px-3 text-right">NOx (t/día)</th>
+                <th class="py-3 px-3 text-right">SO₂ (t/día)</th>
+                <th class="py-3 px-3 text-right bg-sky-50 font-extrabold text-sky-900">CO₂ (t/día)</th>
+                <th class="py-3 px-3 text-right bg-slate-100 font-extrabold text-slate-900">CO₂ Anual (Mt/año)</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-carretera-cuerpo" class="divide-y divide-slate-100 font-mono-num text-slate-700"></tbody>
+            <tfoot id="tabla-carretera-pie" class="bg-slate-100 font-mono-num font-bold border-t-2 border-slate-300"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-4 sm:px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+          <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Emisiones de Precursores GEI por Categoría de Fuente (Gg/año - SEGAM)</h3>
+          <span class="text-xs font-semibold text-indigo-700" id="subtexto-alcance-fuentes">Alcance Estatal</span>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100/80 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3.5">Tipo de Fuente</th>
+                <th class="py-3 px-3.5">Actividades Principales</th>
+                <th class="py-3 px-3 text-right">SO₂ (Gg)</th>
+                <th class="py-3 px-3 text-right">CO (Gg)</th>
+                <th class="py-3 px-3 text-right">NOx (Gg)</th>
+                <th class="py-3 px-3 text-right">COV (Gg)</th>
+                <th class="py-3 px-3 text-right">NH₃ (Gg)</th>
+                <th class="py-3 px-3 text-right bg-slate-100 font-extrabold text-slate-900">Total Precursores</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-fuentes-cuerpo" class="divide-y divide-slate-100 font-mono-num text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="lg:col-span-7 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Fuentes Móviles: Emisiones por Tipo de Vehículo</h3>
+          <div class="overflow-x-auto custom-scrollbar max-h-80">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                  <th class="p-2">Vehículo</th>
+                  <th class="p-2 text-right">PM 2.5 (Gg)</th>
+                  <th class="p-2 text-right">CN Moderado (Mg)</th>
+                  <th class="p-2 text-right">CN Alto (Mg)</th>
+                  <th class="p-2 text-right">% Carbono Negro</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-vehiculos-cuerpo" class="divide-y divide-slate-100 font-mono-num"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 bg-white p-4 rounded-xl border border-slate-200 shadow-sm chart-box-base">
+          <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Aportación de Carbono Negro (CN) por Fuente</h3>
+          <canvas id="chartCarbonoNegro"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 py-6 text-xs mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div>
+        <p class="font-semibold text-slate-200">Gobierno del Estado de San Luis Potosí • SEGAM • UASLP</p>
+        <p class="text-slate-500">Programa Estatal de Acción ante el Cambio Climático (PEACC) • Directrices IPCC 2006 / AR5</p>
+      </div>
+      <div class="text-right text-slate-500">
+        <p>Actualización Metodológica 2015–2025</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- LÓGICA DE ACTUALIZACIÓN INTEGRAL -->
+  <script>
+    const MUNICIPIOS_SLP = [
+      "Ahualulco", "Alaquines", "Aquismón", "Armadillo de los Infante", "Axtla de Terrazas",
+      "Cárdenas", "Catorce", "Cedral", "Cerritos", "Cerro de San Pedro", "Charcas",
+      "Ciudad del Maíz", "Ciudad Fernández", "Ciudad Valles", "Coxcatlán", "Ébano",
+      "El Naranjo", "Guadalcázar", "Huehuetlán", "Lagunillas", "Matehuala",
+      "Matlapa", "Mexquitic de Carmona", "Moctezuma", "Rayón", "Rioverde",
+      "Salinas", "San Antonio", "San Ciro de Acosta", "San Luis Potosí", "San Martín Chalchicuautla",
+      "San Nicolás Tolentino", "San Vicente Tancuayalab", "Santa Catarina", "Santa María del Río", "Santo Domingo",
+      "Soledad de Graciano Sánchez", "Tamasopo", "Tamazunchale", "Tampacán", "Tampamolón Corona",
+      "Tamuín", "Tancanhuitz", "Tanlajás", "Tanquián de Escobedo", "Tierra Nueva",
+      "Vanegas", "Venado", "Villa de Arista", "Villa de Arriaga", "Villa de Guadalupe",
+      "Villa de la Paz", "Villa de Ramos", "Villa de Reyes", "Villa Hidalgo", "Villa Juárez",
+      "Xilitla", "Zaragoza"
+    ];
+
+    const GWP_CH4 = 28.0;
+    const GWP_N2O = 265.0;
+
+    const INVENTARIO_BASE_2018 = [
+      ["1. ENERGIA", "Generación", 4.55700, 0.00015, 3.4300e-5, "termica"],
+      ["1. ENERGIA", "Transporte (gasolina)", 2.72400, 0.00018, 3.6000e-5, "transporte"],
+      ["1. ENERGIA", "Transporte (Diesel)", 1.92960, 0.00008, 3.6000e-5, "transporte"],
+      ["1. ENERGIA", "Consumo industrial de combustibles (GN)", 1.07250, 0.00003, 2.7500e-6, "gas_ind"],
+      ["1. ENERGIA", "Comsumo ind (GLP)", 0.14304, 2.4000e-6, 4.8000e-7, "glp_ind"],
+      ["1. ENERGIA", "Consumo industrial de diesel.", 0.34840, 6.5000e-6, 2.6000e-6, "diesel_ind"],
+      ["1. ENERGIA", "Residencial, Comercial y Público (GLP, GN)", 0.56620, 0.00003, 7.6000e-6, "residencial"],
+      ["1. ENERGIA", "Consumo de leña", 0.37950, 0.00156, 2.3000e-5, "lena"],
+      ["1. ENERGIA", "Consumo de bagazo como combustible", 1.28250, 0.00243, 6.7500e-5, "bagazo"],
+
+      ["2. PROCESOS INDUSTRIALES", "Metalurgia", 1.95750, 0.0, 4.3500e-5, "metalurgia"],
+      ["2. PROCESOS INDUSTRIALES", "Química", 0.20160, 0.0, 0.0, "quimica"],
+      ["2. PROCESOS INDUSTRIALES", "Cemento y cal", 2.18400, 8.4000e-7, 0.0, "cemento"],
+      ["2. PROCESOS INDUSTRIALES", "Automotriz", 0.23800, 0.0, 5.6000e-7, "automotriz"],
+      ["2. PROCESOS INDUSTRIALES", "Celulosa y papel", 0.35960, 6.2000e-6, 0.0, "papel"],
+      ["2. PROCESOS INDUSTRIALES", "Vidrio", 0.21120, 0.0, 0.0, "vidrio"],
+      ["2. PROCESOS INDUSTRIALES", "Otras", 0.13300, 0.0, 0.0, "otras_ind"],
+
+      ["3. AGRICULTURA, SILVICULTURA Y OTROS USOS DE LA TIERRA.", "Ferment. Ent", 0.0, 0.04831, 0.0, "ganaderia_ent"],
+      ["3. AGRICULTURA, SILVICULTURA Y OTROS USOS DE LA TIERRA.", "Manejo excretas", 0.0, 0.00230, 0.00018, "ganaderia_man"],
+      ["3. AGRICULTURA, SILVICULTURA Y OTROS USOS DE LA TIERRA.", "Quema agricola", 0.13260, 0.00354, 9.5200e-5, "quema_cana"],
+
+      ["4. RESIDUOS", "Domésticos", 0.0, 0.04264, 0.0, "residuos_dom"],
+      ["4. RESIDUOS", "Industriales", 0.00280, 0.00210, 0.0, "residuos_ind"]
+    ];
+
+    const FACTORES_TIEMPO = {
+      2015: { energia: 0.950, industria: 0.920, afolu: 0.970, residuos: 0.940 },
+      2016: { energia: 0.970, industria: 0.950, afolu: 0.980, residuos: 0.960 },
+      2017: { energia: 0.990, industria: 0.980, afolu: 0.990, residuos: 0.980 },
+      2018: { energia: 1.000, industria: 1.000, afolu: 1.000, residuos: 1.000 },
+      2019: { energia: 1.030, industria: 1.050, afolu: 1.010, residuos: 1.020 },
+      2020: { energia: 0.930, industria: 0.910, afolu: 1.000, residuos: 1.030 },
+      2021: { energia: 0.980, industria: 0.990, afolu: 1.010, residuos: 1.050 },
+      2022: { energia: 1.020, industria: 1.040, afolu: 1.020, residuos: 1.070 },
+      2023: { energia: 1.050, industria: 1.080, afolu: 1.030, residuos: 1.090 },
+      2024: { energia: 1.070, industria: 1.110, afolu: 1.035, residuos: 1.110 },
+      2025: { energia: 1.090, industria: 1.140, afolu: 1.040, residuos: 1.130 }
+    };
+
+    // Cuenca cañera exclusiva
+    const PESOS_CANA_HUASTECA = {
+      "Ciudad Valles": 0.42, "Tamasopo": 0.24, "El Naranjo": 0.18, "Tamuín": 0.08,
+      "Aquismón": 0.03, "Coxcatlán": 0.02, "San Vicente Tancuayalab": 0.02, "Huehuetlán": 0.01
+    };
+
+    // Ponderación de especies ganaderas por municipio
+    const PESOS_GANADO_ESPECIES = {
+      "bov_carne": { "Tamuín": 0.28, "Ébano": 0.16, "San Vicente Tancuayalab": 0.12, "Ciudad Valles": 0.10, "Tanquián de Escobedo": 0.06, "San Ciro de Acosta": 0.04, "Rioverde": 0.04 },
+      "bov_leche": { "Villa de Reyes": 0.54, "San Luis Potosí": 0.14, "Soledad de Graciano Sánchez": 0.10, "Rioverde": 0.08, "Ciudad Fernández": 0.06 },
+      "porcinos": { "Santa María del Río": 0.25, "Matehuala": 0.20, "Rioverde": 0.15, "San Luis Potosí": 0.15, "Mexquitic de Carmona": 0.10 },
+      "caprinos": { "Matehuala": 0.22, "Charcas": 0.16, "Salinas": 0.14, "Cedral": 0.12, "Villa de Ramos": 0.10, "Vanegas": 0.08, "Santo Domingo": 0.08 },
+      "ovinos": { "Salinas": 0.20, "Villa de Ramos": 0.18, "Moctezuma": 0.15, "Charcas": 0.12, "Matehuala": 0.10, "Ahualulco": 0.10 },
+      "aves": { "Matehuala": 0.32, "Cedral": 0.28, "Villa de Arista": 0.18, "Venado": 0.12, "Villa de Reyes": 0.10 }
+    };
+
+    const PESOS_MUNICIPALES = {
+      "San Luis Potosí": { termica: 0.05, transporte: 0.38, gas_ind: 0.42, glp_ind: 0.35, diesel_ind: 0.32, residencial: 0.36, lena: 0.01, metalurgia: 0.48, quimica: 0.40, cemento: 0.18, automotriz: 0.52, papel: 0.35, vidrio: 0.70, otras_ind: 0.45, ganaderia_ent: 0.02, ganaderia_man: 0.02, residuos_dom: 0.35, residuos_ind: 0.45 },
+      "Villa de Reyes": { termica: 0.58, transporte: 0.05, gas_ind: 0.28, glp_ind: 0.22, diesel_ind: 0.20, residencial: 0.02, lena: 0.02, metalurgia: 0.25, quimica: 0.15, cemento: 0.00, automotriz: 0.40, papel: 0.00, vidrio: 0.00, otras_ind: 0.15, ganaderia_ent: 0.05, ganaderia_man: 0.08, residuos_dom: 0.02, residuos_ind: 0.20 },
+      "Tamuín": { termica: 0.35, transporte: 0.03, gas_ind: 0.02, glp_ind: 0.05, diesel_ind: 0.12, residencial: 0.02, lena: 0.03, metalurgia: 0.00, quimica: 0.00, cemento: 0.42, automotriz: 0.00, papel: 0.00, vidrio: 0.00, otras_ind: 0.02, ganaderia_ent: 0.25, ganaderia_man: 0.22, residuos_dom: 0.02, residuos_ind: 0.08 },
+      "Cerritos": { termica: 0.00, transporte: 0.015, gas_ind: 0.01, glp_ind: 0.02, diesel_ind: 0.05, residencial: 0.01, lena: 0.02, metalurgia: 0.00, quimica: 0.00, cemento: 0.26, automotriz: 0.00, papel: 0.00, vidrio: 0.00, otras_ind: 0.01, ganaderia_ent: 0.02, ganaderia_man: 0.02, residuos_dom: 0.015, residuos_ind: 0.03 },
+      "Ciudad Valles": { termica: 0.02, transporte: 0.09, gas_ind: 0.03, glp_ind: 0.05, diesel_ind: 0.08, residencial: 0.08, lena: 0.05, metalurgia: 0.00, quimica: 0.05, cemento: 0.12, automotriz: 0.00, papel: 0.20, vidrio: 0.00, otras_ind: 0.05, ganaderia_ent: 0.12, ganaderia_man: 0.10, residuos_dom: 0.09, residuos_ind: 0.08 },
+      "Soledad de Graciano Sánchez": { termica: 0.00, transporte: 0.13, gas_ind: 0.08, glp_ind: 0.08, diesel_ind: 0.06, residencial: 0.14, lena: 0.01, metalurgia: 0.12, quimica: 0.10, cemento: 0.00, automotriz: 0.05, papel: 0.15, vidrio: 0.15, otras_ind: 0.12, ganaderia_ent: 0.02, ganaderia_man: 0.02, residuos_dom: 0.14, residuos_ind: 0.05 },
+      "Matehuala": { termica: 0.00, transporte: 0.05, gas_ind: 0.04, glp_ind: 0.04, diesel_ind: 0.04, residencial: 0.05, lena: 0.05, metalurgia: 0.04, quimica: 0.05, cemento: 0.00, automotriz: 0.02, papel: 0.00, vidrio: 0.00, otras_ind: 0.04, ganaderia_ent: 0.06, ganaderia_man: 0.07, residuos_dom: 0.05, residuos_ind: 0.03 },
+      "Rioverde": { termica: 0.00, transporte: 0.05, gas_ind: 0.02, glp_ind: 0.03, diesel_ind: 0.03, residencial: 0.05, lena: 0.05, metalurgia: 0.00, quimica: 0.00, cemento: 0.00, automotriz: 0.00, papel: 0.00, vidrio: 0.00, otras_ind: 0.02, ganaderia_ent: 0.05, ganaderia_man: 0.05, residuos_dom: 0.05, residuos_ind: 0.02 },
+      "Tamasopo": { termica: 0.00, transporte: 0.015, gas_ind: 0.00, glp_ind: 0.01, diesel_ind: 0.02, residencial: 0.015, lena: 0.04, metalurgia: 0.00, quimica: 0.00, cemento: 0.00, automotriz: 0.00, papel: 0.00, vidrio: 0.00, otras_ind: 0.00, ganaderia_ent: 0.04, ganaderia_man: 0.03, residuos_dom: 0.015, residuos_ind: 0.01 },
+      "El Naranjo": { termica: 0.00, transporte: 0.01, gas_ind: 0.00, glp_ind: 0.01, diesel_ind: 0.02, residencial: 0.01, lena: 0.03, metalurgia: 0.00, quimica: 0.00, cemento: 0.00, automotriz: 0.00, papel: 0.00, vidrio: 0.00, otras_ind: 0.00, ganaderia_ent: 0.03, ganaderia_man: 0.03, residuos_dom: 0.01, residuos_ind: 0.01 },
+      "Ébano": { termica: 0.00, transporte: 0.02, gas_ind: 0.01, glp_ind: 0.01, diesel_ind: 0.03, residencial: 0.02, lena: 0.03, metalurgia: 0.00, quimica: 0.00, cemento: 0.00, automotriz: 0.00, papel: 0.00, vidrio: 0.00, otras_ind: 0.00, ganaderia_ent: 0.12, ganaderia_man: 0.10, residuos_dom: 0.02, residuos_ind: 0.01 }
+    };
+
+    MUNICIPIOS_SLP.forEach(m => {
+      if (!PESOS_MUNICIPALES[m]) PESOS_MUNICIPALES[m] = {};
+      const pesoCana = PESOS_CANA_HUASTECA[m] || 0.0;
+      PESOS_MUNICIPALES[m]['quema_cana'] = pesoCana;
+      PESOS_MUNICIPALES[m]['bagazo'] = pesoCana;
+    });
+
+    const CAT_SPATIAL = [
+      "termica", "transporte", "gas_ind", "glp_ind", "diesel_ind", "residencial",
+      "lena", "metalurgia", "quimica", "cemento", "automotriz",
+      "papel", "vidrio", "otras_ind", "ganaderia_ent", "ganaderia_man",
+      "residuos_dom", "residuos_ind"
+    ];
+
+    const sumaEsp = {};
+    CAT_SPATIAL.forEach(c => {
+      sumaEsp[c] = 0;
+      Object.keys(PESOS_MUNICIPALES).forEach(m => {
+        sumaEsp[c] += (PESOS_MUNICIPALES[m][c] || 0);
+      });
+    });
+
+    const munsSinAsignar = MUNICIPIOS_SLP.filter(m => !PESOS_MUNICIPALES[m].transporte);
+    munsSinAsignar.forEach(m => {
+      CAT_SPATIAL.forEach(c => {
+        const resto = Math.max(0, 1.0 - sumaEsp[c]);
+        PESOS_MUNICIPALES[m][c] = resto / munsSinAsignar.length;
+      });
+    });
+
+    const DATOS_CULTIVOS_BASE = [
+      { cultivo: "Caña de azúcar", prod: 30147632, rel: 0.20, fms: 0.895, finc: 0.72, fe_co2: 1617.98, fe_ch4: 2.29, tipo: 'cana' },
+      { cultivo: "Maíz (grano y forraje)", prod: 1441926, rel: 1.50, fms: 0.919, finc: 0.20, fe_co2: 1747.80, fe_ch4: 2.09, tipo: 'grano' },
+      { cultivo: "Frijol", prod: 278049, rel: 1.30, fms: 0.919, finc: 0.20, fe_co2: 1229.62, fe_ch4: 5.32, tipo: 'grano' },
+      { cultivo: "Sorgo (grano y forraje)", prod: 817384, rel: 1.50, fms: 0.914, finc: 0.20, fe_co2: 1700.00, fe_ch4: 2.00, tipo: 'grano' },
+      { cultivo: "Alfalfa", prod: 12816393, rel: 0.00, fms: 0.903, finc: 0.00, fe_co2: 0.0, fe_ch4: 0.0, tipo: 'forraje' },
+      { cultivo: "Cebada (grano y forraje)", prod: 43200, rel: 2.30, fms: 0.903, finc: 0.20, fe_co2: 1692.64, fe_ch4: 1.95, tipo: 'grano' },
+      { cultivo: "Trigo (grano y forraje)", prod: 6190, rel: 1.50, fms: 0.891, finc: 0.20, fe_co2: 1812.49, fe_ch4: 1.61, tipo: 'grano' }
+    ];
+
+    const DATOS_GANADERIA_BASE = [
+      { especie: "Bovinos carne", clave: "bov_carne", cabezas: 240000, fe_ent: 56.0, fe_man_ch4: 1.5, exc_n: 40, fe_n2o: 0.16 },
+      { especie: "Bovinos leche", clave: "bov_leche", cabezas: 16000, fe_ent: 104.35, fe_man_ch4: 4.0, exc_n: 70, fe_n2o: 0.35 },
+      { especie: "Porcinos", clave: "porcinos", cabezas: 126000, fe_ent: 1.0, fe_man_ch4: 4.0, exc_n: 16, fe_n2o: 0.14 },
+      { especie: "Caprinos", clave: "caprinos", cabezas: 164000, fe_ent: 5.0, fe_man_ch4: 0.149, exc_n: 40, fe_n2o: 0.03 },
+      { especie: "Ovinos", clave: "ovinos", cabezas: 111000, fe_ent: 5.0, fe_man_ch4: 0.139, exc_n: 12, fe_n2o: 0.03 },
+      { especie: "Aves (pollo/engorda/postura)", clave: "aves", cabezas: 48000000, fe_ent: 0.0, fe_man_ch4: 0.016, exc_n: 0.6, fe_n2o: 0.002 },
+      { especie: "Guajolotes", clave: "aves", cabezas: 12000, fe_ent: 0.0, fe_man_ch4: 0.016, exc_n: 0.6, fe_n2o: 0.002 },
+      { especie: "Equinos (caballos)", clave: "equidos", cabezas: 38000, fe_ent: 18.0, fe_man_ch4: 1.803, exc_n: 40, fe_n2o: 0.04 },
+      { especie: "Mulas y asnos", clave: "equidos", cabezas: 24000, fe_ent: 10.0, fe_man_ch4: 0.986, exc_n: 40, fe_n2o: 0.04 }
+    ];
+
+    const TRAMOS_CARRETERA_BASE = [
+      { tramo: "1. Querétaro — San Luis Potosí", ruta: "MEX 057", km: 156.27, hc: 7.42, co: 48.16, nox: 32.86, so2: 0.39, co2_dia: 2291.84, muns: ["Santa María del Río", "Tierra Nueva", "Villa de Reyes", "Zaragoza", "San Luis Potosí"] },
+      { tramo: "2. Libramiento Oriente de SLP", ruta: "MEX 057D", km: 33.76, hc: 0.58, co: 2.14, nox: 5.06, so2: 0.06, co2_dia: 335.16, muns: ["San Luis Potosí", "Soledad de Graciano Sánchez", "Zaragoza"] },
+      { tramo: "3. San Luis Potosí — Matehuala", ruta: "MEX 057D", km: 157.00, hc: 4.57, co: 24.42, nox: 26.10, so2: 0.31, co2_dia: 1741.13, muns: ["San Luis Potosí", "Soledad de Graciano Sánchez", "Villa Hidalgo", "Guadalcázar", "Villa de Guadalupe", "Matehuala"] },
+      { tramo: "4. Libramiento de Matehuala", ruta: "MEX 057D", km: 14.20, hc: 0.21, co: 0.97, nox: 1.65, so2: 0.02, co2_dia: 113.60, muns: ["Matehuala", "Villa de la Paz"] }
+    ];
+
+    const FUENTES_PRECURSORES_BASE = [
+      { tipo: "FUENTES FIJAS", desc: "Centrales termoeléctricas, Cemento, Cal, Siderurgia, Química, Textil, Vidrio, Alimentos", so2: 125.55, co: 9.87, nox: 23.02, cov: 2.23, nh3: 0.157, catMun: 'cemento' },
+      { tipo: "FUENTES DE ÁREA", desc: "Combustión leña doméstica, Quema agrícola, Solventes, Asfalto, Ladrilleras, Gas LP", so2: 1.10, co: 123.14, nox: 12.23, cov: 106.66, nh3: 31.15, catMun: 'residencial' },
+      { tipo: "FUENTES MÓVILES CARRETERAS", desc: "Parque vehicular en circulación (autos, camiones carga, autobuses, tractocamiones)", so2: 0.94, co: 252.05, nox: 35.89, cov: 13.49, nh3: 0.82, catMun: 'transporte' },
+      { tipo: "FUENTES MÓVILES NO CARRETERAS", desc: "Ferrocarriles / locomotoras, Aviación comercial y aviación general en aeropuerto", so2: 0.03, co: 0.33, nox: 2.63, cov: 0.11, nh3: 0.00, catMun: 'transporte' }
+    ];
+
+    const DATOS_VEHICULOS_CN = [
+      { veh: "Tractocamiones de carga", pm25: 139.72, cn_mod: 60.08, cn_alto: 83.83, pct: 49.1 },
+      { veh: "Autobuses de transporte urbano", pm25: 76.26, cn_mod: 32.79, cn_alto: 45.76, pct: 26.8 },
+      { veh: "Pick up / Camionetas ligeras", pm25: 27.21, cn_mod: 11.70, cn_alto: 16.33, pct: 9.5 },
+      { veh: "Autos particulares", pm25: 19.30, cn_mod: 8.30, cn_alto: 11.58, pct: 6.8 },
+      { veh: "Vehículos privados y com. < 3 ton", pm25: 10.44, cn_mod: 4.49, cn_alto: 6.26, pct: 3.7 },
+      { veh: "Motocicletas", pm25: 9.57, cn_mod: 4.12, cn_alto: 5.74, pct: 3.4 },
+      { veh: "Camionetas pasaje / combis", pm25: 1.13, cn_mod: 0.49, cn_alto: 0.68, pct: 0.4 },
+      { veh: "Taxis", pm25: 1.12, cn_mod: 0.48, cn_alto: 0.67, pct: 0.4 }
+    ];
+
+    let moduloActivo = 'matriz';
+    let modoTemporal = 'anual';
+    let modoSankey = 'energia';
+    let tabGraficaActiva = 'sectores';
+
+    const chartsInstancias = {};
+
+    const optgroup = document.getElementById('optgroup-municipios');
+    MUNICIPIOS_SLP.forEach(mun => {
+      const opt = document.createElement('option');
+      opt.value = mun;
+      opt.textContent = mun;
+      optgroup.appendChild(opt);
+    });
+
+    function cambiarModulo(mod) {
+      moduloActivo = mod;
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        btn.classList.remove('bg-sky-600', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-300');
+      });
+      const activeBtn = document.getElementById(`nav-${mod}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-300');
+      }
+
+      document.querySelectorAll('.modulo-contenido').forEach(sec => sec.classList.add('hidden'));
+      const activeSec = document.getElementById(`modulo-${mod}`);
+      if (activeSec) activeSec.classList.remove('hidden');
+
+      setTimeout(() => {
+        if (mod === 'sankey') {
+          renderizarSankey();
+        } else {
+          Object.values(chartsInstancias).forEach(chart => {
+            if (chart) chart.resize();
+          });
+        }
+      }, 50);
+    }
+
+    function cambiarTabGrafica(tab) {
+      tabGraficaActiva = tab;
+      const tabs = ['sectores', 'subsectores', 'gases', 'territorial', 'temporal'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const view = document.getElementById(`view-chart-${t}`);
+        if (t === tab) {
+          btn.className = "px-2.5 py-1 rounded-md bg-white text-sky-700 shadow-sm transition";
+          view.classList.remove('hidden');
+        } else {
+          btn.className = "px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition";
+          view.classList.add('hidden');
+        }
+      });
+
+      setTimeout(() => {
+        Object.values(chartsInstancias).forEach(chart => {
+          if (chart) chart.resize();
+        });
+      }, 30);
+    }
+
+    function setModoTemporal(modo) {
+      modoTemporal = modo;
+      document.getElementById('btn-modo-anual').className = modo === 'anual'
+        ? 'flex-1 py-1.5 rounded-md text-sky-700 font-semibold transition bg-white shadow-sm'
+        : 'flex-1 py-1.5 rounded-md text-slate-600 font-medium transition hover:text-slate-900';
+      document.getElementById('btn-modo-acum').className = modo === 'acumulado'
+        ? 'flex-1 py-1.5 rounded-md text-sky-700 font-semibold transition bg-white shadow-sm'
+        : 'flex-1 py-1.5 rounded-md text-slate-600 font-medium transition hover:text-slate-900';
+
+      document.getElementById('wrapper-anual').classList.toggle('hidden', modo !== 'anual');
+      document.getElementById('wrapper-acum').classList.toggle('hidden', modo !== 'acumulado');
+
+      renderizarTodo();
+    }
+
+    function validarRango() {
+      const d = parseInt(document.getElementById('sel-desde').value);
+      const h = parseInt(document.getElementById('sel-hasta').value);
+      if (d > h) document.getElementById('sel-hasta').value = d;
+      renderizarTodo();
+    }
+
+    function getAniosSeleccionados() {
+      if (modoTemporal === 'anual') {
+        return [parseInt(document.getElementById('sel-anio').value)];
+      } else {
+        const d = parseInt(document.getElementById('sel-desde').value);
+        const h = parseInt(document.getElementById('sel-hasta').value);
+        const arr = [];
+        for (let a = d; a <= h; a++) arr.push(a);
+        return arr;
+      }
+    }
+
+    function getFamiliaSector(sec) {
+      if (sec.includes('ENERGIA')) return 'energia';
+      if (sec.includes('PROCESOS')) return 'industria';
+      if (sec.includes('AGRICULTURA')) return 'afolu';
+      return 'residuos';
+    }
+
+    function calcularMatriz(territorio, anios) {
+      const esConsolidado = (territorio === 'ESTATAL' || territorio === 'TODOS_MUNICIPIOS');
+
+      return INVENTARIO_BASE_2018.map(item => {
+        const [sector, subsector, co2_b, ch4_b, n2o_b, catClave] = item;
+        const fam = getFamiliaSector(sector);
+        const pesoEspacial = esConsolidado ? 1.0 : (PESOS_MUNICIPALES[territorio][catClave] || 0.0);
+
+        let co2 = 0, ch4 = 0, n2o = 0;
+        anios.forEach(a => {
+          const tf = FACTORES_TIEMPO[a][fam] || 1.0;
+          co2 += (co2_b * tf * pesoEspacial);
+          ch4 += (ch4_b * tf * pesoEspacial);
+          n2o += (n2o_b * tf * pesoEspacial);
+        });
+
+        const co2eq_ch4 = ch4 * GWP_CH4;
+        const co2eq_n2o = n2o * GWP_N2O;
+        const masa_gei = co2 + ch4 + n2o;
+        const total_co2e = co2 + co2eq_ch4 + co2eq_n2o;
+
+        return { sector, subsector, co2, ch4, co2eq_ch4, n2o, co2eq_n2o, masa_gei, total_co2e };
+      });
+    }
+
+    function formatNum(val) {
+      if (!val || val === 0) return "0.00000";
+      if (Math.abs(val) < 0.00005) return val.toExponential(4);
+      return val.toFixed(5);
+    }
+
+    function safeChartUpdate(canvasId, config) {
+      if (chartsInstancias[canvasId]) {
+        chartsInstancias[canvasId].data = config.data;
+        if (config.options) chartsInstancias[canvasId].options = config.options;
+        chartsInstancias[canvasId].update();
+      } else {
+        const el = document.getElementById(canvasId);
+        if (el) {
+          const ctx = el.getContext('2d');
+          chartsInstancias[canvasId] = new Chart(ctx, config);
+        }
+      }
+    }
+
+    // 1. RENDER MATRIZ Y GRÁFICOS
+    function renderizarModuloMatriz(datos, granTotalCO2e, granTotalMasa, territorio, anios) {
+      const tbody = document.getElementById('tabla-cuerpo');
+      tbody.innerHTML = '';
+
+      const sectores = [
+        '1. ENERGIA',
+        '2. PROCESOS INDUSTRIALES',
+        '3. AGRICULTURA, SILVICULTURA Y OTROS USOS DE LA TIERRA.',
+        '4. RESIDUOS'
+      ];
+
+      let gt_co2 = 0, gt_ch4 = 0, gt_co2eq_ch4 = 0, gt_n2o = 0, gt_co2eq_n2o = 0, gt_gei = 0;
+
+      sectores.forEach(sec => {
+        const subs = datos.filter(d => d.sector === sec);
+        if (subs.length === 0) return;
+
+        let s_co2 = 0, s_ch4 = 0, s_ch4_eq = 0, s_n2o = 0, s_n2o_eq = 0, s_gei = 0, s_co2e = 0;
+
+        subs.forEach(row => {
+          s_co2 += row.co2; s_ch4 += row.ch4; s_ch4_eq += row.co2eq_ch4;
+          s_n2o += row.n2o; s_n2o_eq += row.co2eq_n2o; s_gei += row.masa_gei;
+          s_co2e += row.total_co2e;
+
+          const pct = granTotalCO2e > 0 ? (row.total_co2e / granTotalCO2e) * 100 : 0;
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+          tr.setAttribute('data-sub', row.subsector.toLowerCase());
+          tr.innerHTML = `
+            <td class="py-2.5 px-3.5 font-sans font-medium text-slate-800 sticky left-0 bg-white">${row.sector}</td>
+            <td class="py-2.5 px-3.5 font-sans text-slate-700">${row.subsector}</td>
+            <td class="py-2.5 px-3 text-right">${formatNum(row.co2)}</td>
+            <td class="py-2.5 px-3 text-right">${formatNum(row.ch4)}</td>
+            <td class="py-2.5 px-3 text-right text-slate-500">${formatNum(row.co2eq_ch4)}</td>
+            <td class="py-2.5 px-3 text-right">${formatNum(row.n2o)}</td>
+            <td class="py-2.5 px-3 text-right text-slate-500">${formatNum(row.co2eq_n2o)}</td>
+            <td class="py-2.5 px-3 text-right bg-slate-50 font-semibold">${formatNum(row.masa_gei)}</td>
+            <td class="py-2.5 px-3.5 text-right font-extrabold text-sky-950 bg-sky-50/50">${formatNum(row.total_co2e)}</td>
+            <td class="py-2.5 px-3.5 text-right font-bold ${pct > 10 ? 'text-blue-700' : 'text-slate-600'}">${pct.toFixed(2)}%</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        const secPct = granTotalCO2e > 0 ? (s_co2e / granTotalCO2e) * 100 : 0;
+        const trSub = document.createElement('tr');
+        trSub.className = "bg-slate-100/90 font-bold text-slate-900 border-t border-b border-slate-300";
+        trSub.innerHTML = `
+          <td class="py-2.5 px-3.5 font-sans sticky left-0 bg-slate-100">Total</td>
+          <td class="py-2.5 px-3.5 font-sans">${sec}</td>
+          <td class="py-2.5 px-3 text-right">${formatNum(s_co2)}</td>
+          <td class="py-2.5 px-3 text-right">${formatNum(s_ch4)}</td>
+          <td class="py-2.5 px-3 text-right">${formatNum(s_ch4_eq)}</td>
+          <td class="py-2.5 px-3 text-right">${formatNum(s_n2o)}</td>
+          <td class="py-2.5 px-3 text-right">${formatNum(s_n2o_eq)}</td>
+          <td class="py-2.5 px-3 text-right">${formatNum(s_gei)}</td>
+          <td class="py-2.5 px-3.5 text-right text-sky-950 font-black">${formatNum(s_co2e)}</td>
+          <td class="py-2.5 px-3.5 text-right text-blue-900 font-extrabold">${secPct.toFixed(2)}%</td>
+        `;
+        tbody.appendChild(trSub);
+
+        gt_co2 += s_co2; gt_ch4 += s_ch4; gt_co2eq_ch4 += s_ch4_eq;
+        gt_n2o += s_n2o; gt_co2eq_n2o += s_n2o_eq; gt_gei += s_gei;
+      });
+
+      const tfoot = document.getElementById('tabla-pie');
+      tfoot.innerHTML = `
+        <tr class="bg-slate-200/90 text-slate-900 text-xs">
+          <td class="py-3 px-3.5 font-sans font-black sticky left-0 bg-slate-200">GRAN TOTAL</td>
+          <td class="py-3 px-3.5 font-sans text-slate-700">Todas las Fuentes</td>
+          <td class="py-3 px-3 text-right">${formatNum(gt_co2)}</td>
+          <td class="py-3 px-3 text-right">${formatNum(gt_ch4)}</td>
+          <td class="py-3 px-3 text-right">${formatNum(gt_co2eq_ch4)}</td>
+          <td class="py-3 px-3 text-right">${formatNum(gt_n2o)}</td>
+          <td class="py-3 px-3 text-right">${formatNum(gt_co2eq_n2o)}</td>
+          <td class="py-3 px-3 text-right font-black">${formatNum(gt_gei)}</td>
+          <td class="py-3 px-3.5 text-right font-black text-sky-950 text-sm">${formatNum(granTotalCO2e)}</td>
+          <td class="py-3 px-3.5 text-right font-black">100.00%</td>
+        </tr>
+      `;
+
+      filtrarFilasTabla();
+
+      // Gráficos analíticos de Matriz
+      const sectoresNombres = ['1. ENERGÍA', '2. INDUSTRIA', '3. AFOLU', '4. RESIDUOS'];
+      const sectoresCO2e = [0, 0, 0, 0];
+      const coloresSectores = ['#0284c7', '#6366f1', '#10b981', '#f59e0b'];
+
+      datos.forEach(d => {
+        if (d.sector.includes('ENERGIA')) sectoresCO2e[0] += d.total_co2e;
+        else if (d.sector.includes('PROCESOS')) sectoresCO2e[1] += d.total_co2e;
+        else if (d.sector.includes('AGRICULTURA')) sectoresCO2e[2] += d.total_co2e;
+        else if (d.sector.includes('RESIDUOS')) sectoresCO2e[3] += d.total_co2e;
+      });
+
+      safeChartUpdate('chartSectoresPie', {
+        type: 'doughnut',
+        data: {
+          labels: sectoresNombres,
+          datasets: [{ data: sectoresCO2e.map(v => Number(v.toFixed(4))), backgroundColor: coloresSectores, borderWidth: 2 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Distribución Porcentual (%) — ${territorio}`, font: { size: 12, weight: 'bold' } }, legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+          cutout: '62%'
+        }
+      });
+
+      safeChartUpdate('chartSectoresBar', {
+        type: 'bar',
+        data: {
+          labels: sectoresNombres,
+          datasets: [{ label: 'Mt CO₂e', data: sectoresCO2e.map(v => Number(v.toFixed(4))), backgroundColor: coloresSectores, borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Magnitud Total por Sector — ${territorio} (Mt CO₂e)`, font: { size: 12, weight: 'bold' } }, legend: { display: false } },
+          scales: { y: { beginAtZero: true, title: { display: true, text: 'Mt CO₂e' } } }
+        }
+      });
+
+      const sortedSubs = [...datos].sort((a, b) => b.total_co2e - a.total_co2e);
+      safeChartUpdate('chartSubsectores', {
+        type: 'bar',
+        data: {
+          labels: sortedSubs.map(s => s.subsector),
+          datasets: [{
+            label: 'Mt CO₂e',
+            data: sortedSubs.map(s => Number(s.total_co2e.toFixed(4))),
+            backgroundColor: sortedSubs.map(s => s.sector.includes('ENERGIA') ? '#0284c7' : (s.sector.includes('PROCESOS') ? '#6366f1' : (s.sector.includes('AGRICULTURA') ? '#10b981' : '#f59e0b'))),
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, title: { display: true, text: 'Mt CO₂e' } }, y: { ticks: { font: { size: 10 } } } }
+        }
+      });
+
+      const co2_masa = datos.reduce((a, b) => a + b.co2, 0);
+      const ch4_masa = datos.reduce((a, b) => a + b.ch4, 0);
+      const n2o_masa = datos.reduce((a, b) => a + b.n2o, 0);
+      const ch4_eq = datos.reduce((a, b) => a + b.co2eq_ch4, 0);
+      const n2o_eq = datos.reduce((a, b) => a + b.co2eq_n2o, 0);
+
+      safeChartUpdate('chartGasesMasa', {
+        type: 'bar',
+        data: {
+          labels: ['CO₂ (Dióxido)', 'CH₄ (Metano)', 'N₂O (Nitroso)'],
+          datasets: [{ label: 'Masa Física (Mt)', data: [co2_masa, ch4_masa, n2o_masa], backgroundColor: ['#38bdf8', '#34d399', '#fbbf24'], borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Masa Física Real Emitida (${territorio})`, font: { size: 12, weight: 'bold' } }, legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      safeChartUpdate('chartGasesEq', {
+        type: 'bar',
+        data: {
+          labels: ['CO₂ Directo', 'CH₄ (x28 GWP)', 'N₂O (x265 GWP)'],
+          datasets: [{ label: 'Equivalente (Mt CO₂e)', data: [co2_masa, ch4_eq, n2o_eq], backgroundColor: ['#0284c7', '#059669', '#d97706'], borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Equivalente Calentamiento (${territorio})`, font: { size: 12, weight: 'bold' } }, legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      const listaMunsTop = MUNICIPIOS_SLP.map(m => {
+        const mDatos = calcularMatriz(m, anios);
+        let e = 0, ind = 0, ag = 0, res = 0;
+        mDatos.forEach(row => {
+          if (row.sector.includes('ENERGIA')) e += row.total_co2e;
+          else if (row.sector.includes('PROCESOS')) ind += row.total_co2e;
+          else if (row.sector.includes('AGRICULTURA')) ag += row.total_co2e;
+          else if (row.sector.includes('RESIDUOS')) res += row.total_co2e;
+        });
+        return { municipio: m, total: (e + ind + ag + res), e, ind, ag, res };
+      }).sort((a, b) => b.total - a.total).slice(0, 15);
+
+      safeChartUpdate('chartTerritorial', {
+        type: 'bar',
+        data: {
+          labels: listaMunsTop.map(m => m.municipio),
+          datasets: [
+            { label: 'Energía', data: listaMunsTop.map(m => Number(m.e.toFixed(3))), backgroundColor: '#0284c7', stack: 'stack1' },
+            { label: 'Industria', data: listaMunsTop.map(m => Number(m.ind.toFixed(3))), backgroundColor: '#6366f1', stack: 'stack1' },
+            { label: 'AFOLU', data: listaMunsTop.map(m => Number(m.ag.toFixed(3))), backgroundColor: '#10b981', stack: 'stack1' },
+            { label: 'Residuos', data: listaMunsTop.map(m => Number(m.res.toFixed(3))), backgroundColor: '#f59e0b', stack: 'stack1' }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
+          scales: { x: { stacked: true, ticks: { font: { size: 9 }, maxRotation: 45 } }, y: { stacked: true, beginAtZero: true } }
+        }
+      });
+
+      const aniosSerie = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
+      const serieEnergia = [], serieIndustria = [], serieAfolu = [], serieResiduos = [], serieTotal = [];
+
+      aniosSerie.forEach(yr => {
+        const dYr = calcularMatriz(territorio, [yr]);
+        let e = 0, ind = 0, ag = 0, res = 0;
+        dYr.forEach(r => {
+          if (r.sector.includes('ENERGIA')) e += r.total_co2e;
+          else if (r.sector.includes('PROCESOS')) ind += r.total_co2e;
+          else if (r.sector.includes('AGRICULTURA')) ag += r.total_co2e;
+          else if (r.sector.includes('RESIDUOS')) res += r.total_co2e;
+        });
+        serieEnergia.push(Number(e.toFixed(3)));
+        serieIndustria.push(Number(ind.toFixed(3)));
+        serieAfolu.push(Number(ag.toFixed(3)));
+        serieResiduos.push(Number(res.toFixed(3)));
+        serieTotal.push(Number((e + ind + ag + res).toFixed(3)));
+      });
+
+      safeChartUpdate('chartTemporal', {
+        type: 'line',
+        data: {
+          labels: aniosSerie,
+          datasets: [
+            { label: 'Gran Total CO₂e', data: serieTotal, borderColor: '#0f172a', borderWidth: 3, pointRadius: 3 },
+            { label: 'Energía', data: serieEnergia, borderColor: '#0284c7', backgroundColor: 'rgba(2, 132, 199, 0.08)', fill: true, borderWidth: 2 },
+            { label: 'Industria', data: serieIndustria, borderColor: '#6366f1', borderWidth: 2 },
+            { label: 'AFOLU', data: serieAfolu, borderColor: '#10b981', borderWidth: 2 },
+            { label: 'Residuos', data: serieResiduos, borderColor: '#f59e0b', borderWidth: 2 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+          scales: { y: { beginAtZero: false, title: { display: true, text: 'Mt CO₂e Anual' } } }
+        }
+      });
+    }
+
+    function filtrarFilasTabla() {
+      const q = document.getElementById('filtro-subsector').value.toLowerCase().trim();
+      const filas = document.querySelectorAll('#tabla-cuerpo tr:not(.bg-slate-100\\/90)');
+      filas.forEach(f => {
+        const sub = f.getAttribute('data-sub') || '';
+        f.style.display = (q === '' || sub.includes(q)) ? '' : 'none';
+      });
+    }
+
+    // 2. RENDER SANKEY PLOTLY
+    function conmutarSankey(tipo) {
+      modoSankey = tipo;
+      document.getElementById('btn-sankey-energia').className = tipo === 'energia'
+        ? 'px-3 py-1.5 rounded-md bg-white text-sky-700 font-semibold shadow-sm transition'
+        : 'px-3 py-1.5 rounded-md text-slate-600 font-medium hover:text-slate-900 transition';
+      document.getElementById('btn-sankey-gei').className = tipo === 'gei'
+        ? 'px-3 py-1.5 rounded-md bg-white text-sky-700 font-semibold shadow-sm transition'
+        : 'px-3 py-1.5 rounded-md text-slate-600 font-medium hover:text-slate-900 transition';
+
+      renderizarSankey();
+    }
+
+    function renderizarSankey() {
+      const container = document.getElementById('plotly-sankey-container');
+      if (!container) return;
+
+      const territorio = document.getElementById('sel-territorio').value;
+      const esConsolidado = (territorio === 'ESTATAL' || territorio === 'TODOS_MUNICIPIOS');
+      
+      let p_trans = esConsolidado ? 1.0 : (PESOS_MUNICIPALES[territorio]?.transporte || 0.005);
+      let p_ind = esConsolidado ? 1.0 : ((PESOS_MUNICIPALES[territorio]?.gas_ind || 0.005) + (PESOS_MUNICIPALES[territorio]?.termica || 0.0)) / 2.0;
+      let p_res = esConsolidado ? 1.0 : (PESOS_MUNICIPALES[territorio]?.residencial || 0.005);
+      let p_bag = esConsolidado ? 1.0 : (PESOS_CANA_HUASTECA[territorio] || 0.0);
+      let p_lena = esConsolidado ? 1.0 : (PESOS_MUNICIPALES[territorio]?.lena || 0.01);
+
+      document.getElementById('sankey-subtext').textContent = esConsolidado
+        ? 'Visualización de flujos y balances para todo el Estado de San Luis Potosí'
+        : `Visualización adaptada a la matriz energética y productiva de ${territorio}`;
+
+      if (modoSankey === 'energia') {
+        const v_bagazo = Number((20.128 * p_bag).toFixed(3));
+        const v_lena = Number((7.807 * p_lena).toFixed(3));
+        const v_gasseco_t = Number((422.61 * p_trans).toFixed(3));
+        const v_gasseco_i = Number((116.56 * p_ind).toFixed(3));
+        const v_gasseco_r = Number((3.51 * p_res).toFixed(3));
+        const v_glp_r = Number((338.43 * p_res).toFixed(3));
+        const v_glp_i = Number((155.52 * p_ind).toFixed(3));
+        const v_gasolinas = Number((242.55 * p_trans).toFixed(3));
+        const v_combustoleo = Number((229.98 * p_ind).toFixed(3));
+        const v_diesel_t = Number((132.13 * p_trans).toFixed(3));
+        const v_diesel_i = Number((29.52 * p_ind).toFixed(3));
+        const v_diesel_a = Number((5.57 * (esConsolidado ? 1.0 : (PESOS_MUNICIPALES[territorio]?.ganaderia_ent || 0.01))).toFixed(3));
+        const v_elec_i = Number((81.97 * p_ind).toFixed(3));
+        const v_elec_r = Number((45.84 * p_res).toFixed(3));
+        const v_elec_t = Number((0.64 * p_trans).toFixed(3));
+        const v_coque = Number((0.433 * p_ind).toFixed(3));
+
+        const sum_trans = v_gasseco_t + v_gasolinas + v_diesel_t + v_elec_t;
+        const sum_ind = v_bagazo + v_gasseco_i + v_glp_i + v_combustoleo + v_diesel_i + v_elec_i + v_coque;
+        const sum_res = v_lena + v_gasseco_r + v_glp_r + v_elec_r;
+        const sum_ag = v_diesel_a;
+
+        const nodes = [
+          { name: `Bagazo Caña (${v_bagazo} PJ)`, color: "#10b981" },
+          { name: `Leña Forestal (${v_lena} PJ)`, color: "#059669" },
+          { name: `Gas Seco (${(v_gasseco_t + v_gasseco_i + v_gasseco_r).toFixed(2)} PJ)`, color: "#38bdf8" },
+          { name: `Gas LP (${(v_glp_r + v_glp_i).toFixed(2)} PJ)`, color: "#0284c7" },
+          { name: `Gasolinas (${v_gasolinas} PJ)`, color: "#f59e0b" },
+          { name: `Combustóleo (${v_combustoleo} PJ)`, color: "#ef4444" },
+          { name: `Diésel (${(v_diesel_t + v_diesel_i + v_diesel_a).toFixed(2)} PJ)`, color: "#8b5cf6" },
+          { name: `Electricidad (${(v_elec_i + v_elec_r + v_elec_t).toFixed(2)} PJ)`, color: "#ec4899" },
+          { name: `Coque Petróleo (${v_coque} PJ)`, color: "#64748b" },
+
+          { name: `Transporte (${sum_trans.toFixed(2)} PJ)`, color: "#f59e0b" },
+          { name: `Industrial (${sum_ind.toFixed(2)} PJ)`, color: "#6366f1" },
+          { name: `Residencial/Com. (${sum_res.toFixed(2)} PJ)`, color: "#0284c7" },
+          { name: `Agropecuario (${sum_ag.toFixed(2)} PJ)`, color: "#10b981" }
+        ];
+
+        const rawLinks = [
+          { s: 0, t: 10, v: v_bagazo, c: "rgba(16, 185, 129, 0.4)" },
+          { s: 1, t: 11, v: v_lena, c: "rgba(5, 150, 105, 0.4)" },
+          { s: 2, t: 9, v: v_gasseco_t, c: "rgba(56, 189, 248, 0.4)" },
+          { s: 2, t: 10, v: v_gasseco_i, c: "rgba(56, 189, 248, 0.4)" },
+          { s: 2, t: 11, v: v_gasseco_r, c: "rgba(56, 189, 248, 0.4)" },
+          { s: 3, t: 11, v: v_glp_r, c: "rgba(2, 132, 199, 0.4)" },
+          { s: 3, t: 10, v: v_glp_i, c: "rgba(2, 132, 199, 0.4)" },
+          { s: 4, t: 9, v: v_gasolinas, c: "rgba(245, 158, 11, 0.4)" },
+          { s: 5, t: 10, v: v_combustoleo, c: "rgba(239, 68, 68, 0.4)" },
+          { s: 6, t: 9, v: v_diesel_t, c: "rgba(139, 92, 246, 0.4)" },
+          { s: 6, t: 10, v: v_diesel_i, c: "rgba(139, 92, 246, 0.4)" },
+          { s: 6, t: 12, v: v_diesel_a, c: "rgba(139, 92, 246, 0.4)" },
+          { s: 7, t: 10, v: v_elec_i, c: "rgba(236, 72, 153, 0.4)" },
+          { s: 7, t: 11, v: v_elec_r, c: "rgba(236, 72, 153, 0.4)" },
+          { s: 7, t: 9, v: v_elec_t, c: "rgba(236, 72, 153, 0.4)" },
+          { s: 8, t: 10, v: v_coque, c: "rgba(100, 116, 139, 0.4)" }
+        ];
+
+        const links = rawLinks.filter(l => l.v > 0.0001);
+
+        const data = [{
+          type: "sankey", orientation: "h",
+          node: { pad: 15, thickness: 20, line: { color: "#0f172a", width: 0.5 }, label: nodes.map(n => n.name), color: nodes.map(n => n.color) },
+          link: { source: links.map(l => l.s), target: links.map(l => l.t), value: links.map(l => l.v), color: links.map(l => l.c) }
+        }];
+
+        const layout = {
+          title: { text: `Balance Energético (Petajoules PJ) — ${territorio}`, font: { color: "#f8fafc", size: 13 } },
+          font: { family: "Inter, sans-serif", size: 10, color: "#cbd5e1" },
+          paper_bgcolor: "transparent", plot_bgcolor: "transparent", margin: { l: 20, r: 20, t: 40, b: 20 }
+        };
+
+        Plotly.react('plotly-sankey-container', data, layout, { responsive: true, displayModeBar: false });
+
+      } else {
+        const anios = getAniosSeleccionados();
+        const dMun = calcularMatriz(territorio, anios);
+
+        let e_co2 = 0, e_ch4 = 0, e_n2o = 0;
+        let i_co2 = 0, i_ch4 = 0, i_n2o = 0;
+        let a_co2 = 0, a_ch4 = 0, a_n2o = 0;
+        let r_co2 = 0, r_ch4 = 0, r_n2o = 0;
+
+        dMun.forEach(row => {
+          if (row.sector.includes('ENERGIA')) { e_co2 += row.co2; e_ch4 += row.co2eq_ch4; e_n2o += row.co2eq_n2o; }
+          else if (row.sector.includes('PROCESOS')) { i_co2 += row.co2; i_ch4 += row.co2eq_ch4; i_n2o += row.co2eq_n2o; }
+          else if (row.sector.includes('AGRICULTURA')) { a_co2 += row.co2; a_ch4 += row.co2eq_ch4; a_n2o += row.co2eq_n2o; }
+          else if (row.sector.includes('RESIDUOS')) { r_co2 += row.co2; r_ch4 += row.co2eq_ch4; r_n2o += row.co2eq_n2o; }
+        });
+
+        const tot_e = e_co2 + e_ch4 + e_n2o;
+        const tot_i = i_co2 + i_ch4 + i_n2o;
+        const tot_a = a_co2 + a_ch4 + a_n2o;
+        const tot_r = r_co2 + r_ch4 + r_n2o;
+
+        const tot_co2 = e_co2 + i_co2 + a_co2 + r_co2;
+        const tot_ch4 = e_ch4 + i_ch4 + a_ch4 + r_ch4;
+        const tot_n2o = e_n2o + i_n2o + a_n2o + r_n2o;
+        const tot_gei = tot_co2 + tot_ch4 + tot_n2o;
+
+        const nodes = [
+          { name: `1. Energía (${tot_e.toFixed(3)} Mt)`, color: "#0284c7" },
+          { name: `2. Procesos Ind. (${tot_i.toFixed(3)} Mt)`, color: "#6366f1" },
+          { name: `3. AFOLU (${tot_a.toFixed(3)} Mt)`, color: "#10b981" },
+          { name: `4. Residuos (${tot_r.toFixed(3)} Mt)`, color: "#f59e0b" },
+
+          { name: `CO₂ Directo (${tot_co2.toFixed(3)} Mt)`, color: "#38bdf8" },
+          { name: `CH₄ Eq. (${tot_ch4.toFixed(3)} Mt)`, color: "#34d399" },
+          { name: `N₂O Eq. (${tot_n2o.toFixed(3)} Mt)`, color: "#fbbf24" },
+
+          { name: `TOTAL GEI (${tot_gei.toFixed(3)} Mt CO₂e)`, color: "#1e293b" }
+        ];
+
+        const rawLinks = [
+          { s: 0, t: 4, v: e_co2, c: "rgba(2, 132, 199, 0.4)" },
+          { s: 0, t: 5, v: e_ch4, c: "rgba(2, 132, 199, 0.4)" },
+          { s: 0, t: 6, v: e_n2o, c: "rgba(2, 132, 199, 0.4)" },
+          { s: 1, t: 4, v: i_co2, c: "rgba(99, 102, 241, 0.4)" },
+          { s: 1, t: 5, v: i_ch4, c: "rgba(99, 102, 241, 0.4)" },
+          { s: 1, t: 6, v: i_n2o, c: "rgba(99, 102, 241, 0.4)" },
+          { s: 2, t: 4, v: a_co2, c: "rgba(16, 185, 129, 0.4)" },
+          { s: 2, t: 5, v: a_ch4, c: "rgba(16, 185, 129, 0.4)" },
+          { s: 2, t: 6, v: a_n2o, c: "rgba(16, 185, 129, 0.4)" },
+          { s: 3, t: 4, v: r_co2, c: "rgba(245, 158, 11, 0.4)" },
+          { s: 3, t: 5, v: r_ch4, c: "rgba(245, 158, 11, 0.4)" },
+          { s: 4, t: 7, v: tot_co2, c: "rgba(56, 189, 248, 0.5)" },
+          { s: 5, t: 7, v: tot_ch4, c: "rgba(52, 211, 153, 0.5)" },
+          { s: 6, t: 7, v: tot_n2o, c: "rgba(251, 191, 36, 0.5)" }
+        ];
+
+        const links = rawLinks.filter(l => l.v > 0.00001);
+
+        const data = [{
+          type: "sankey", orientation: "h",
+          node: { pad: 15, thickness: 20, line: { color: "#0f172a", width: 0.5 }, label: nodes.map(n => n.name), color: nodes.map(n => n.color) },
+          link: { source: links.map(l => l.s), target: links.map(l => l.t), value: links.map(l => l.v), color: links.map(l => l.c) }
+        }];
+
+        const layout = {
+          title: { text: `Flujo de Emisiones GEI (Mt CO₂e) — ${territorio}`, font: { color: "#f8fafc", size: 13 } },
+          font: { family: "Inter, sans-serif", size: 10, color: "#cbd5e1" },
+          paper_bgcolor: "transparent", plot_bgcolor: "transparent", margin: { l: 20, r: 20, t: 40, b: 20 }
+        };
+
+        Plotly.react('plotly-sankey-container', data, layout, { responsive: true, displayModeBar: false });
+      }
+    }
+
+    // 3. RENDER AGRICULTURA
+    function renderizarModuloAgricultura(anios, territorio) {
+      const tbody = document.getElementById('tabla-cultivos-cuerpo');
+      tbody.innerHTML = '';
+
+      const fAg = anios.reduce((acc, a) => acc + (FACTORES_TIEMPO[a].afolu || 1.0), 0) / anios.length;
+      const esConsolidado = (territorio === 'ESTATAL' || territorio === 'TODOS_MUNICIPIOS');
+
+      document.getElementById('subtexto-alcance-cultivos').textContent = esConsolidado 
+        ? "Alcance Estatal Consolidado" 
+        : `Municipio: ${territorio}`;
+
+      let totProd = 0, totMasaInc = 0, totCO2 = 0, totCH4 = 0, totCO2e = 0;
+
+      const cultivosCalculados = DATOS_CULTIVOS_BASE.map(c => {
+        let pesoMun = 1.0;
+        if (!esConsolidado) {
+          if (c.tipo === 'cana') {
+            pesoMun = PESOS_CANA_HUASTECA[territorio] || 0.0;
+          } else if (c.tipo === 'grano') {
+            pesoMun = (PESOS_MUNICIPALES[territorio]?.residencial || 0.015);
+          } else {
+            pesoMun = (PESOS_MUNICIPALES[territorio]?.residencial || 0.01);
+          }
+        }
+
+        const prodAjustada = c.prod * fAg * pesoMun;
+        const masaInc = prodAjustada * c.rel * c.fms * c.finc * 0.9;
+        const co2Mt = (masaInc * 1000 * c.fe_co2) / 1e12;
+        const ch4Mt = (masaInc * 1000 * c.fe_ch4) / 1e12;
+        const co2eMt = co2Mt + (ch4Mt * GWP_CH4);
+
+        return { ...c, prodAjustada, masaInc, co2Mt, ch4Mt, co2eMt };
+      });
+
+      cultivosCalculados.forEach(c => {
+        totProd += c.prodAjustada; totMasaInc += c.masaInc;
+        totCO2 += c.co2Mt; totCH4 += c.ch4Mt; totCO2e += c.co2eMt;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+          <td class="py-2.5 px-3.5 font-sans font-semibold text-slate-800">${c.cultivo}</td>
+          <td class="py-2.5 px-3 text-right font-bold">${Math.round(c.prodAjustada).toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right">${c.rel.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right">${c.fms.toFixed(3)}</td>
+          <td class="py-2.5 px-3 text-right">${(c.finc * 100).toFixed(0)}%</td>
+          <td class="py-2.5 px-3 text-right">0.90</td>
+          <td class="py-2.5 px-3 text-right bg-amber-50/50 font-bold text-amber-900">${Math.round(c.masaInc).toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right">${c.co2Mt.toFixed(5)}</td>
+          <td class="py-2.5 px-3 text-right">${c.ch4Mt.toFixed(5)}</td>
+          <td class="py-2.5 px-3 text-right bg-sky-50 font-extrabold text-sky-900">${c.co2eMt.toFixed(4)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const tfoot = document.getElementById('tabla-cultivos-pie');
+      tfoot.innerHTML = `
+        <tr class="bg-slate-100 text-slate-900 text-xs">
+          <td class="py-3 px-3.5 font-sans font-bold">TOTAL SECTOR AGRÍCOLA</td>
+          <td class="py-3 px-3 text-right font-black">${Math.round(totProd).toLocaleString()}</td>
+          <td colspan="4" class="text-center font-normal text-slate-500">—</td>
+          <td class="py-3 px-3 text-right font-black text-amber-950">${Math.round(totMasaInc).toLocaleString()}</td>
+          <td class="py-3 px-3 text-right font-bold">${totCO2.toFixed(4)}</td>
+          <td class="py-3 px-3 text-right font-bold">${totCH4.toFixed(4)}</td>
+          <td class="py-3 px-3 text-right font-black text-sky-950 text-sm">${totCO2e.toFixed(4)}</td>
+        </tr>
+      `;
+
+      safeChartUpdate('chartCultivosProduccion', {
+        type: 'bar',
+        data: {
+          labels: cultivosCalculados.map(c => c.cultivo),
+          datasets: [{ label: 'Producción (Ton)', data: cultivosCalculados.map(c => Math.round(c.prodAjustada)), backgroundColor: '#f59e0b', borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Producción Agrícola (${territorio})`, font: { size: 12, weight: 'bold' } }, legend: { display: false } },
+          scales: { x: { ticks: { font: { size: 9 }, maxRotation: 25 } }, y: { title: { display: true, text: 'Toneladas' } } }
+        }
+      });
+
+      safeChartUpdate('chartCultivosEmisiones', {
+        type: 'bar',
+        data: {
+          labels: cultivosCalculados.map(c => c.cultivo),
+          datasets: [{ label: 'Mt CO₂e', data: cultivosCalculados.map(c => Number(c.co2eMt.toFixed(4))), backgroundColor: '#0284c7', borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Emisiones de Quema Agrícola (${territorio})`, font: { size: 12, weight: 'bold' } }, legend: { display: false } },
+          scales: { x: { ticks: { font: { size: 9 }, maxRotation: 25 } }, y: { title: { display: true, text: 'Mt CO₂e' } } }
+        }
+      });
+    }
+
+    // 4. RENDER GANADERÍA MULTIESPECIE
+    function renderizarModuloGanaderia(anios, territorio) {
+      const tbody = document.getElementById('tabla-ganado-cuerpo');
+      tbody.innerHTML = '';
+
+      const fGan = anios.reduce((acc, a) => acc + (FACTORES_TIEMPO[a].afolu || 1.0), 0) / anios.length;
+      const esConsolidado = (territorio === 'ESTATAL' || territorio === 'TODOS_MUNICIPIOS');
+
+      document.getElementById('subtexto-alcance-ganado').textContent = esConsolidado
+        ? "Alcance Estatal Consolidado"
+        : `Municipio: ${territorio}`;
+
+      let totCab = 0, totCH4Ent = 0, totCH4Man = 0, totN2O = 0, totCO2e = 0;
+
+      const listaCalculada = DATOS_GANADERIA_BASE.map(g => {
+        let pMun = 1.0;
+        if (!esConsolidado) {
+          if (PESOS_GANADO_ESPECIES[g.clave]) {
+            pMun = PESOS_GANADO_ESPECIES[g.clave][territorio] || 0.003;
+          } else {
+            pMun = (PESOS_MUNICIPALES[territorio]?.ganaderia_ent || 0.01);
+          }
+        }
+
+        const cabAjustadas = g.cabezas * fGan * pMun;
+        const ch4EntTon = (cabAjustadas * g.fe_ent) / 1000;
+        const ch4ManTon = (cabAjustadas * g.fe_man_ch4) / 1000;
+        const n2oTon = (cabAjustadas * g.fe_n2o) / 1000;
+        const co2eMt = ((ch4EntTon + ch4ManTon) * GWP_CH4 + (n2oTon * GWP_N2O)) / 1e6;
+
+        return { ...g, cabAjustadas, ch4EntTon, ch4ManTon, n2oTon, co2eMt };
+      });
+
+      const granTotPecuario = listaCalculada.reduce((acc, g) => acc + g.co2eMt, 0);
+
+      listaCalculada.forEach(g => {
+        totCab += g.cabAjustadas; totCH4Ent += g.ch4EntTon;
+        totCH4Man += g.ch4ManTon; totN2O += g.n2oTon; totCO2e += g.co2eMt;
+
+        const pct = granTotPecuario > 0 ? (g.co2eMt / granTotPecuario) * 100 : 0;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+          <td class="py-2.5 px-3.5 font-sans font-semibold text-slate-800">${g.especie}</td>
+          <td class="py-2.5 px-3 text-right font-bold">${Math.round(g.cabAjustadas).toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right">${g.fe_ent.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right">${Math.round(g.ch4EntTon).toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right">${g.fe_man_ch4.toFixed(3)}</td>
+          <td class="py-2.5 px-3 text-right">${Math.round(g.ch4ManTon).toLocaleString()}</td>
+          <td class="py-2.5 px-3 text-right">${g.exc_n.toFixed(1)}</td>
+          <td class="py-2.5 px-3 text-right">${g.n2oTon.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right bg-rose-50/70 font-extrabold text-rose-950">${g.co2eMt.toFixed(5)}</td>
+          <td class="py-2.5 px-3 text-right font-bold ${pct > 15 ? 'text-rose-700' : 'text-slate-600'}">${pct.toFixed(2)}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const tfoot = document.getElementById('tabla-ganado-pie');
+      tfoot.innerHTML = `
+        <tr class="bg-slate-100 text-slate-900 text-xs">
+          <td class="py-3 px-3.5 font-sans font-bold">TOTAL SECTOR PECUARIO</td>
+          <td class="py-3 px-3 text-right font-black">${Math.round(totCab).toLocaleString()}</td>
+          <td class="text-center font-normal text-slate-500">—</td>
+          <td class="py-3 px-3 text-right font-bold">${Math.round(totCH4Ent).toLocaleString()}</td>
+          <td class="text-center font-normal text-slate-500">—</td>
+          <td class="py-3 px-3 text-right font-bold">${Math.round(totCH4Man).toLocaleString()}</td>
+          <td class="text-center font-normal text-slate-500">—</td>
+          <td class="py-3 px-3 text-right font-bold">${totN2O.toFixed(2)}</td>
+          <td class="py-3 px-3 text-right font-black text-rose-950 text-sm">${totCO2e.toFixed(4)}</td>
+          <td class="py-3 px-3 text-right font-black">100.00%</td>
+        </tr>
+      `;
+
+      safeChartUpdate('chartGanadoPoblacion', {
+        type: 'bar',
+        data: {
+          labels: listaCalculada.map(g => g.especie),
+          datasets: [{ label: 'Cabezas', data: listaCalculada.map(g => Math.round(g.cabAjustadas)), backgroundColor: '#f43f5e', borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Hato Ganadero — ${territorio}`, font: { size: 12, weight: 'bold' } }, legend: { display: false } },
+          scales: { x: { ticks: { font: { size: 9 }, maxRotation: 30 } }, y: { type: 'logarithmic', title: { display: true, text: 'Cabezas (Escala Log)' } } }
+        }
+      });
+
+      safeChartUpdate('chartGanadoEmisiones', {
+        type: 'doughnut',
+        data: {
+          labels: listaCalculada.map(g => g.especie),
+          datasets: [{ data: listaCalculada.map(g => Number(g.co2eMt.toFixed(4))), backgroundColor: ['#e11d48', '#f43f5e', '#fb7185', '#fda4af', '#fecdd3', '#0284c7', '#38bdf8', '#6366f1', '#a855f7'] }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Emisiones Pecuarias (${territorio})`, font: { size: 12, weight: 'bold' } }, legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9 } } } },
+          cutout: '60%'
+        }
+      });
+    }
+
+    // 5. RENDER CORREDOR CARRETERO Y FUENTES
+    function renderizarModuloTransporte(territorio) {
+      const tbodyCarretera = document.getElementById('tabla-carretera-cuerpo');
+      tbodyCarretera.innerHTML = '';
+
+      const esConsolidado = (territorio === 'ESTATAL' || territorio === 'TODOS_MUNICIPIOS');
+      let tramosFiltrados = TRAMOS_CARRETERA_BASE;
+
+      if (!esConsolidado) {
+        tramosFiltrados = TRAMOS_CARRETERA_BASE.filter(t => t.muns.includes(territorio));
+      }
+
+      let totKm = 0, totHC = 0, totCO = 0, totNOx = 0, totSO2 = 0, totCO2Dia = 0, totCO2Anual = 0;
+
+      if (tramosFiltrados.length === 0) {
+        tbodyCarretera.innerHTML = `
+          <tr>
+            <td colspan="9" class="p-4 text-center text-slate-400 font-sans italic">
+              El municipio de ${territorio} no registra trazo directo en los 4 tramos evaluados de la MEX 057 / 057D.
+            </td>
+          </tr>
+        `;
+      } else {
+        tramosFiltrados.forEach(t => {
+          const factorMunTramo = esConsolidado ? 1.0 : (1.0 / t.muns.length);
+          const kmMun = t.km * factorMunTramo;
+          const hcMun = t.hc * factorMunTramo;
+          const coMun = t.co * factorMunTramo;
+          const noxMun = t.nox * factorMunTramo;
+          const so2Mun = t.so2 * factorMunTramo;
+          const co2DiaMun = t.co2_dia * factorMunTramo;
+          const co2AnualMt = (co2DiaMun * 365) / 1e6;
+
+          totKm += kmMun; totHC += hcMun; totCO += coMun;
+          totNOx += noxMun; totSO2 += so2Mun; totCO2Dia += co2DiaMun; totCO2Anual += co2AnualMt;
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+          tr.innerHTML = `
+            <td class="py-2.5 px-3.5 font-sans font-semibold text-slate-800">${t.tramo}</td>
+            <td class="py-2.5 px-3 font-sans text-sky-700 font-bold">${t.ruta}</td>
+            <td class="py-2.5 px-3 text-right font-bold">${kmMun.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right">${hcMun.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right">${coMun.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right">${noxMun.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right">${so2Mun.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right bg-sky-50 font-bold text-sky-900">${co2DiaMun.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right bg-slate-100 font-extrabold text-slate-900">${co2AnualMt.toFixed(4)}</td>
+          `;
+          tbodyCarretera.appendChild(tr);
+        });
+      }
+
+      document.getElementById('subtexto-km-carretera').textContent = `Longitud en territorio: ${totKm.toFixed(2)} km`;
+      const tfootCarretera = document.getElementById('tabla-carretera-pie');
+      tfootCarretera.innerHTML = `
+        <tr class="bg-slate-100 text-slate-900 text-xs">
+          <td colspan="2" class="py-3 px-3.5 font-sans font-bold">TOTAL ASIGNADO EN TERRITORIO</td>
+          <td class="py-3 px-3 text-right font-black">${totKm.toFixed(2)}</td>
+          <td class="py-3 px-3 text-right font-bold">${totHC.toFixed(2)}</td>
+          <td class="py-3 px-3 text-right font-bold">${totCO.toFixed(2)}</td>
+          <td class="py-3 px-3 text-right font-bold">${totNOx.toFixed(2)}</td>
+          <td class="py-3 px-3 text-right font-bold">${totSO2.toFixed(2)}</td>
+          <td class="py-3 px-3 text-right font-black text-sky-950">${Math.round(totCO2Dia).toLocaleString()}</td>
+          <td class="py-3 px-3 text-right font-black text-slate-950 text-sm">${totCO2Anual.toFixed(4)}</td>
+        </tr>
+      `;
+
+      const tbodyFuentes = document.getElementById('tabla-fuentes-cuerpo');
+      tbodyFuentes.innerHTML = '';
+      document.getElementById('subtexto-alcance-fuentes').textContent = esConsolidado ? "Alcance Estatal" : `Municipio: ${territorio}`;
+
+      FUENTES_PRECURSORES_BASE.forEach(f => {
+        const pMun = esConsolidado ? 1.0 : (PESOS_MUNICIPALES[territorio]?.[f.catMun] || 0.015);
+        const so2 = f.so2 * pMun; const co = f.co * pMun; const nox = f.nox * pMun;
+        const cov = f.cov * pMun; const nh3 = f.nh3 * pMun;
+        const sumPre = so2 + co + nox + cov + nh3;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+          <td class="py-2.5 px-3.5 font-sans font-bold text-slate-900">${f.tipo}</td>
+          <td class="py-2.5 px-3.5 font-sans text-slate-600 text-[11px]">${f.desc}</td>
+          <td class="py-2.5 px-3 text-right">${so2.toFixed(3)}</td>
+          <td class="py-2.5 px-3 text-right">${co.toFixed(3)}</td>
+          <td class="py-2.5 px-3 text-right">${nox.toFixed(3)}</td>
+          <td class="py-2.5 px-3 text-right">${cov.toFixed(3)}</td>
+          <td class="py-2.5 px-3 text-right">${nh3.toFixed(3)}</td>
+          <td class="py-2.5 px-3 text-right bg-slate-100 font-extrabold text-slate-900">${sumPre.toFixed(3)}</td>
+        `;
+        tbodyFuentes.appendChild(tr);
+      });
+
+      const tbodyVehiculos = document.getElementById('tabla-vehiculos-cuerpo');
+      tbodyVehiculos.innerHTML = '';
+      const pTransMun = esConsolidado ? 1.0 : (PESOS_MUNICIPALES[territorio]?.transporte || 0.015);
+
+      DATOS_VEHICULOS_CN.forEach(v => {
+        const pm25 = v.pm25 * pTransMun;
+        const cn_mod = v.cn_mod * pTransMun;
+        const cn_alto = v.cn_alto * pTransMun;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 border-b border-slate-100";
+        tr.innerHTML = `
+          <td class="p-2 font-sans font-medium text-slate-800">${v.veh}</td>
+          <td class="p-2 text-right">${pm25.toFixed(2)}</td>
+          <td class="p-2 text-right font-semibold text-slate-700">${cn_mod.toFixed(2)}</td>
+          <td class="p-2 text-right font-bold text-rose-700">${cn_alto.toFixed(2)}</td>
+          <td class="p-2 text-right font-extrabold text-indigo-700">${v.pct}%</td>
+        `;
+        tbodyVehiculos.appendChild(tr);
+      });
+
+      safeChartUpdate('chartCarbonoNegro', {
+        type: 'doughnut',
+        data: {
+          labels: ['Fuentes Fijas (69%)', 'Fuentes de Área (29%)', 'Móviles Carreteras (1%)', 'Móviles No Carreteras (1%)'],
+          datasets: [{ data: [8030.0 * pTransMun, 3301.88 * pTransMun, 170.85 * pTransMun, 35.11 * pTransMun], backgroundColor: ['#0284c7', '#f59e0b', '#6366f1', '#10b981'] }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: `Carbono Negro (${territorio})`, font: { size: 12, weight: 'bold' } }, legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } },
+          cutout: '62%'
+        }
+      });
+    }
+
+    // CONTROLADOR GENERAL
+    function renderizarTodo() {
+      const territorio = document.getElementById('sel-territorio').value;
+      const anios = getAniosSeleccionados();
+
+      const datos = calcularMatriz(territorio, anios);
+      const granTotalCO2e = datos.reduce((a, b) => a + b.total_co2e, 0);
+      const granTotalMasa = datos.reduce((a, b) => a + b.masa_gei, 0);
+
+      const txtTerritorio = (territorio === 'ESTATAL') 
+        ? 'Todo el Estado (Consolidado)' 
+        : (territorio === 'TODOS_MUNICIPIOS' ? 'Comparativa 58 Municipios' : `Municipio: ${territorio}`);
+      const txtPeriodo = (modoTemporal === 'anual') 
+        ? `Año ${anios[0]}` 
+        : `Periodo Acumulado ${anios[0]}–${anios[anios.length - 1]} (${anios.length} años)`;
+      
+      document.getElementById('tabla-contexto-subtext').textContent = `• ${txtTerritorio} • ${txtPeriodo}`;
+      document.getElementById('txt-subtitulo-panel').textContent = `| Alcance: ${txtTerritorio} (${txtPeriodo})`;
+
+      document.getElementById('kpi-co2eq').textContent = formatNum(granTotalCO2e);
+      document.getElementById('kpi-masa').textContent = formatNum(granTotalMasa);
+
+      const factorTiempoEnergia = anios.reduce((a, yr) => a + (FACTORES_TIEMPO[yr].energia || 1.0), 0) / anios.length;
+      const pesoTerritorialEnergia = (territorio === 'ESTATAL' || territorio === 'TODOS_MUNICIPIOS') 
+        ? 1.0 
+        : ((PESOS_MUNICIPALES[territorio]?.transporte || 0.01) + (PESOS_MUNICIPALES[territorio]?.termica || 0.0) + (PESOS_MUNICIPALES[territorio]?.gas_ind || 0.01)) / 2.0;
+      const pjEstimado = 1849.3 * factorTiempoEnergia * pesoTerritorialEnergia;
+      document.getElementById('kpi-energia-pj').textContent = pjEstimado.toFixed(1);
+
+      const secSums = { '1. ENERGÍA': 0, '2. PROCESOS IND.': 0, '3. AFOLU': 0, '4. RESIDUOS': 0 };
+      datos.forEach(d => {
+        if (d.sector.includes('ENERGIA')) secSums['1. ENERGÍA'] += d.total_co2e;
+        else if (d.sector.includes('PROCESOS')) secSums['2. PROCESOS IND.'] += d.total_co2e;
+        else if (d.sector.includes('AGRICULTURA')) secSums['3. AFOLU'] += d.total_co2e;
+        else if (d.sector.includes('RESIDUOS')) secSums['4. RESIDUOS'] += d.total_co2e;
+      });
+
+      let topSec = '1. ENERGÍA', maxS = 0;
+      Object.keys(secSums).forEach(k => {
+        if (secSums[k] > maxS) { maxS = secSums[k]; topSec = k; }
+      });
+      const topSecPct = granTotalCO2e > 0 ? ((maxS / granTotalCO2e) * 100).toFixed(1) : 0;
+      document.getElementById('kpi-sector-top').textContent = topSec;
+      document.getElementById('kpi-sector-pct').textContent = `${topSecPct}% del total territorial`;
+
+      // Actualizar todos los módulos
+      renderizarModuloMatriz(datos, granTotalCO2e, granTotalMasa, territorio, anios);
+      renderizarModuloAgricultura(anios, territorio);
+      renderizarModuloGanaderia(anios, territorio);
+      renderizarModuloTransporte(territorio);
+      renderizarSankey();
+    }
+
+    function exportarActivoCSV() {
+      const territorio = document.getElementById('sel-territorio').value;
+      const anios = getAniosSeleccionados();
+      let csv = '';
+      let filename = `iegei_slp_${moduloActivo}_${territorio.toLowerCase().replace(/\s+/g, '_')}_${modoTemporal}.csv`;
+
+      if (moduloActivo === 'matriz') {
+        const datos = calcularMatriz(territorio, anios);
+        const granTotalCO2e = datos.reduce((a, b) => a + b.total_co2e, 0);
+        csv = 'SECTOR,SUBSECTOR,CO2_Mt,CH4_Mt,CO2eq_CH4,N2O_Mt,CO2eq_N2O,MILLONES_TONELADAS_GEI,MILLONES_TONELADAS_CO2_EQ,PORCENTAJE\n';
+        datos.forEach(r => {
+          const pct = granTotalCO2e > 0 ? (r.total_co2e / granTotalCO2e) * 100 : 0;
+          csv += `"${r.sector}","${r.subsector}",${r.co2},${r.ch4},${r.co2eq_ch4},${r.n2o},${r.co2eq_n2o},${r.masa_gei},${r.total_co2e},${pct.toFixed(4)}%\n`;
+        });
+      }
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderizarTodo();
+    });
+  </script>
+</body>
+</html>

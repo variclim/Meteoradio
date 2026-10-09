@@ -20,3 +20,6 @@ https://variclim.github.io/Meteoradio/Herramienta_Agroclima_v1.html
 
 ETJ_Ponderaciones
 https://variclim.github.io/Meteoradio/Pond_v3_ETJ.html
+
+
+Informe GEI-Balance SLP https://variclim.github.io/Meteoradio/inventario_GI_SLP2026.html

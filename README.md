@@ -26,3 +26,6 @@ Informe GEI-Balance SLP https://variclim.github.io/Meteoradio/inventario_GI_SLP2
 
 
 Informes Climdex https://variclim.github.io/Meteoradio/Climdex_Data_VariClim_v4.html
+
+
+SPI SPEI CONAGUA https://variclim.github.io/Meteoradio/SPI_SPEI_VariClim_v1.html

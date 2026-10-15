@@ -23,3 +23,6 @@ https://variclim.github.io/Meteoradio/Pond_v3_ETJ.html
 
 
 Informe GEI-Balance SLP https://variclim.github.io/Meteoradio/inventario_GI_SLP2026.html
+
+
+Informes Climdex https://variclim.github.io/Meteoradio/Climdex_Data_VariClim_v4.html
